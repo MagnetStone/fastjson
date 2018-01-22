@@ -7,6 +7,8 @@
 微信：skyingshang
 ```
 
+#### 点击[https://zonghaishang.gitbooks.io/fastjson-source-code-analysis/content/](https://zonghaishang.gitbooks.io/fastjson-source-code-analysis/content/ "fastjson源码分析")阅读
+
 #### 我在工作之余编写源码解析的目的：
 
 1. 做技术应该追求极致和细节，让更多的人拥抱开源并从中受益
