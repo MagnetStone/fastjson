@@ -249,4 +249,51 @@ com.alibaba.fastjson.serializer.SerializeWriter类非常重要，序列化输出
     }
 ```
 
+### 序列化Null
+
+``` java
+    public void writeNull() {
+        /** 调用输出字符串null */
+        write("null");
+    }
+
+``` 
+
+### 序列化字符串
+
+``` java
+    public void write(String str, int off, int len) {
+        /** 计算总共字符串长度 */
+        int newcount = count + len;
+        /** 如果当前存储空间不够 */
+        if (newcount > buf.length) {
+            if (writer == null) {
+                expandCapacity(newcount);
+            } else {
+                /**
+                 * 如果字符串str超过缓冲区大小, 进行循环拷贝
+                 */
+                do {
+                    /** 计算当前buffer剩余容纳字符数 */
+                    int rest = buf.length - count;
+                    /** 将字符串str[off, off + rest) 拷贝到buf[count, ...]中*/
+                    str.getChars(off, off + rest, buf, count);
+                    count = buf.length;
+                    /** 强制刷新输出流，会重置count = 0 */
+                    flush();
+                    /** 计算剩余需要拷贝的字符数量 */
+                    len -= rest;
+                    /** 剩余要拷贝字符在str中偏移量(索引) */
+                    off += rest;
+                } while (len > buf.length);
+                newcount = len;
+            }
+        }
+        /** 存储空间充足，直接将str[off, off + len) 拷贝到buf[count, ...]中*/
+        str.getChars(off, off + len, buf, count);
+        count = newcount;
+    }
+
+```
+
 
