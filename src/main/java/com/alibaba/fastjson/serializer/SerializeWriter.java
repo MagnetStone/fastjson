@@ -33,23 +33,31 @@ import static com.alibaba.fastjson.util.IOUtils.replaceChars;
  * @author wenshao[szujobs@hotmail.com]
  */
 public final class SerializeWriter extends Writer {
+
+    /** 字符类型buffer */
     private final static ThreadLocal<char[]> bufLocal      = new ThreadLocal<char[]>();
+    /** 字节类型buffer */
     private final static ThreadLocal<byte[]> bytesBufLocal = new ThreadLocal<byte[]>();
 
+    /** 存储序列化结果buffer */
     protected char                           buf[];
 
-    /**
-     * The number of chars in the buffer.
-     */
+    /** buffer中包含的字符数 */
     protected int                            count;
 
+    /** 序列化的特性，比如写枚举按照名字还是枚举值 */
     protected int                            features;
 
+    /** 序列化输出器 */
     private final Writer                     writer;
 
+    /** 是否使用单引号输出json */
     protected boolean                        useSingleQuotes;
+    /** 输出字段是否追加 "和：字符 */
     protected boolean                        quoteFieldNames;
+    /** 是否对字段排序 */
     protected boolean                        sortField;
+    /** 禁用字段循环引用探测 */
     protected boolean                        disableCircularReferenceDetect;
     protected boolean                        beanToArray;
     protected boolean                        writeNonStringValueAsString;
