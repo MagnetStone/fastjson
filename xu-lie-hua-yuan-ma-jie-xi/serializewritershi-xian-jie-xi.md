@@ -2,7 +2,7 @@
 
 fastjson核心功能包括序列化和反序列化，序列化的含义是将java对象转换成跨语言的json字符串。我认为从这里作为分析入口相对比较简单，第二章会从反序列化角度切入，会包含词法分析等较为复杂点展开。
 
-现在，我们正式开始咀嚼原汁原味的代码吧。
+现在，我们正式开始咀嚼原汁原味的代码吧，我添加了详细的代码注释。
 
 ## SerializeWriter成员变量
 
@@ -146,5 +146,63 @@ com.alibaba.fastjson.serializer.SerializeWriter类非常重要，序列化输出
 ```
 序列化长整型和整型非常类似，增加了双引号判断，采用用了和Integer转换为单字符同样的技巧。
 
+### 序列化浮点类型数字
+
+``` java
+    public void writeDouble(double doubleValue, boolean checkWriteClassName) {
+        /** 如果doubleValue不合法或者是无穷数，调用writeNull */
+        if (Double.isNaN(doubleValue)
+                || Double.isInfinite(doubleValue)) {
+            writeNull();
+        } else {
+            /** 将高精度double转换为字符串 */
+            String doubleText = Double.toString(doubleValue);
+            /** 启动WriteNullNumberAsZero特性，会将结尾.0去除 */
+            if (isEnabled(SerializerFeature.WriteNullNumberAsZero) && doubleText.endsWith(".0")) {
+                doubleText = doubleText.substring(0, doubleText.length() - 2);
+            }
+
+            /** 调用字符串输出方法 */
+            write(doubleText);
+
+            /** 如果开启序列化WriteClassName特性，输出Double类型 */
+            if (checkWriteClassName && isEnabled(SerializerFeature.WriteClassName)) {
+                write('D');
+            }
+        }
+    }
+```
+
+### 序列化枚举类型
+
+``` java
+    public void writeEnum(Enum<?> value) {
+        if (value == null) {
+            /** 如果枚举value为空，调用writeNull输出 */
+            writeNull();
+            return;
+        }
+        
+        String strVal = null;
+        /** 如果开启序列化输出枚举名字作为属性值 */
+        if (writeEnumUsingName && !writeEnumUsingToString) {
+            strVal = value.name();
+        } else if (writeEnumUsingToString) {
+            /** 采用枚举默认toString方法作为属性值 */
+            strVal = value.toString();;
+        }
+
+        if (strVal != null) {
+            /** 如果开启引号特性，输出json包含引号的字符串 */
+            char quote = isEnabled(SerializerFeature.UseSingleQuotes) ? '\'' : '"';
+            write(quote);
+            write(strVal);
+            write(quote);
+        } else {
+            /** 输出枚举所在的索引号 */
+            writeInt(value.ordinal());
+        }
+    }
+```
 
 

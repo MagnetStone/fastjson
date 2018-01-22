@@ -681,17 +681,22 @@ public final class SerializeWriter extends Writer {
     }
 
     public void writeDouble(double doubleValue, boolean checkWriteClassName) {
-        if (Double.isNaN(doubleValue) //
+        /** 如果doubleValue不合法或者是无穷数，调用writeNull */
+        if (Double.isNaN(doubleValue)
                 || Double.isInfinite(doubleValue)) {
             writeNull();
         } else {
+            /** 将高精度double转换为字符串 */
             String doubleText = Double.toString(doubleValue);
+            /** 启动WriteNullNumberAsZero特性，会将结尾.0去除 */
             if (isEnabled(SerializerFeature.WriteNullNumberAsZero) && doubleText.endsWith(".0")) {
                 doubleText = doubleText.substring(0, doubleText.length() - 2);
             }
-            
+
+            /** 调用字符串输出方法 */
             write(doubleText);
 
+            /** 如果开启序列化WriteClassName特性，输出Double类型 */
             if (checkWriteClassName && isEnabled(SerializerFeature.WriteClassName)) {
                 write('D');
             }
@@ -700,23 +705,28 @@ public final class SerializeWriter extends Writer {
 
     public void writeEnum(Enum<?> value) {
         if (value == null) {
+            /** 如果枚举value为空，调用writeNull输出 */
             writeNull();
             return;
         }
         
         String strVal = null;
+        /** 如果开启序列化输出枚举名字作为属性值 */
         if (writeEnumUsingName && !writeEnumUsingToString) {
             strVal = value.name();
         } else if (writeEnumUsingToString) {
+            /** 采用枚举默认toString方法作为属性值 */
             strVal = value.toString();;
         }
 
         if (strVal != null) {
+            /** 如果开启引号特性，输出json包含引号的字符串 */
             char quote = isEnabled(SerializerFeature.UseSingleQuotes) ? '\'' : '"';
             write(quote);
             write(strVal);
             write(quote);
         } else {
+            /** 输出枚举所在的索引号 */
             writeInt(value.ordinal());
         }
     }
