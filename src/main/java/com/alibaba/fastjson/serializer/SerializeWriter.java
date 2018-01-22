@@ -829,8 +829,10 @@ public final class SerializeWriter extends Writer {
     
     public void writeStringWithDoubleQuote(String text, final char seperator) {
         if (text == null) {
+            /** 如果字符换为空，输出null字符串 */
             writeNull();
             if (seperator != 0) {
+                /** 如果分隔符不为空白字符' '，输出分隔符 */
                 write(seperator);
             }
             return;
@@ -1604,6 +1606,7 @@ public final class SerializeWriter extends Writer {
 
     public void write(List<String> list) {
         if (list.isEmpty()) {
+            /** 空字符列表，输出[]字符串 */
             write("[]");
             return;
         }
@@ -1611,14 +1614,17 @@ public final class SerializeWriter extends Writer {
         int offset = count;
         final int initOffset = offset;
         for (int i = 0, list_size = list.size(); i < list_size; ++i) {
+            /** 循环获取列表中包含的字符串 */
             String text = list.get(i);
 
             boolean hasSpecial = false;
             if (text == null) {
+                /** list包含特殊的null值 */
                 hasSpecial = true;
             } else {
                 for (int j = 0, len = text.length(); j < len; ++j) {
                     char ch = text.charAt(j);
+                    /** 包含指定特殊字符 */
                     if (hasSpecial = (ch < ' ' //
                                       || ch > '~' //
                                       || ch == '"' //
@@ -1633,13 +1639,16 @@ public final class SerializeWriter extends Writer {
                 write('[');
                 for (int j = 0; j < list.size(); ++j) {
                     text = list.get(j);
+                    /** 每个字符用,隔开输出 */
                     if (j != 0) {
                         write(',');
                     }
 
                     if (text == null) {
+                        /** 字符串为空，直接输出null字符串 */
                         write("null");
                     } else {
+                        /** 下文分析 */
                         writeStringWithDoubleQuote(text, (char) 0);
                     }
                 }
@@ -1647,12 +1656,15 @@ public final class SerializeWriter extends Writer {
                 return;
             }
 
+            /** 计算新的字符占用空间，额外3个字符用于存储 "," */
             int newcount = offset + text.length() + 3;
             if (i == list.size() - 1) {
                 newcount++;
             }
+            /** 如果当前存储空间不够*/
             if (newcount > buf.length) {
                 count = offset;
+                /** 扩容到为原有buf容量1.5倍+1, copy原有buf的字符*/
                 expandCapacity(newcount);
             }
 
@@ -1662,10 +1674,12 @@ public final class SerializeWriter extends Writer {
                 buf[offset++] = ',';
             }
             buf[offset++] = '"';
+            /** 拷贝text字符串到buffer数组中 */
             text.getChars(0, text.length(), buf, offset);
             offset += text.length();
             buf[offset++] = '"';
         }
+        /** 最终构造列表形式 ["element", "element", ...] */
         buf[offset++] = ']';
         count = offset;
     }
@@ -1725,8 +1739,10 @@ public final class SerializeWriter extends Writer {
 
     public void write(boolean value) {
         if (value) {
+            /** 输出true字符串 */
             write("true");
         } else {
+            /** 输出false字符串 */
             write("false");
         }
     }
