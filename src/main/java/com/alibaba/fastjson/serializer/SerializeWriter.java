@@ -844,11 +844,14 @@ public final class SerializeWriter extends Writer {
             newcount++;
         }
 
+        /** 如果当前存储空间不够 */
         if (newcount > buf.length) {
             if (writer != null) {
+                /** 写双引号字符 */
                 write('"');
 
                 for (int i = 0; i < text.length(); ++i) {
+                    /** 循环提取字符串中字符 */
                     char ch = text.charAt(i);
 
                     if (isEnabled(SerializerFeature.BrowserSecure)) {
