@@ -1,10 +1,12 @@
 # Summary
 
-[Introduction](/[简介]%28README.md%29 "简介")
-
-## 序列化源码解析
+[Introduction](#)
 
 ## 反序列化源码解析
+
+
+
+## 序列化源码解析
 
 ## 词法和语法解析实现
 
