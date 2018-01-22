@@ -728,6 +728,7 @@ public final class SerializeWriter extends Writer {
 
         if (i == Long.MIN_VALUE) {
             if (needQuotationMark) write("\"-9223372036854775808\"");
+            /** 如果是长整数最小值，调用字符串函数输出到缓冲区*/
             else write("-9223372036854775808");
             return;
         }
