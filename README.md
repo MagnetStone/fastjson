@@ -1,6 +1,6 @@
 首先感谢高铁同学同意我撰写[fastjson](https://github.com/alibaba/fastjson)源码解析，fastjson是一个高效的json与java对象序列化框架，很多公司和开源框架都从fastjson中受益。
 
-目前网上公开的fastjson源码解析太少或者缺少深度，因此我计划通过研究源码的方式并记录下来，让更多想了解底层实现的同学受益。如果发现我的错误，欢迎与我沟通 jason.shang@hotmail.com。
+目前网上公开的fastjson源码解析太少或者缺少深度，因此我计划通过研究源码的方式并记录下来，让更多想了解底层实现的同学受益。如果在阅读过程中发现错误，欢迎与我沟通 jason.shang@hotmail.com。
 
 #### 我在工作之余编写源码解析的目的：
 
