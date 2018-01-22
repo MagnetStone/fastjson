@@ -171,6 +171,28 @@ com.alibaba.fastjson.serializer.SerializeWriter类非常重要，序列化输出
             }
         }
     }
+    
+       public void writeFloat(float value, boolean checkWriteClassName) {
+        /** 如果value不合法或者是无穷数，调用writeNull */
+        if (Float.isNaN(value) //
+                || Float.isInfinite(value)) {
+            writeNull();
+        } else {
+            /** 将高精度float转换为字符串 */
+            String floatText= Float.toString(value);
+            /** 启动WriteNullNumberAsZero特性，会将结尾.0去除 */
+            if (isEnabled(SerializerFeature.WriteNullNumberAsZero) && floatText.endsWith(".0")) {
+                floatText = floatText.substring(0, floatText.length() - 2);
+            }
+            write(floatText);
+
+            /** 如果开启序列化WriteClassName特性，输出float类型 */
+            if (checkWriteClassName && isEnabled(SerializerFeature.WriteClassName)) {
+                write('F');
+            }
+        }
+    }
+    
 ```
 
 ### 序列化枚举类型
