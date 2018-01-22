@@ -16,7 +16,7 @@
 ```
 文章作者 ： 诣极(商宗海)
 框架作者 ： 高铁
-文章地址 ： https://zonghaishang.gitbooks.io/fastjson/content
+文章地址 ： https://zonghaishang.gitbooks.io/fastjson-source-code-analysis/content/
 代码地址 ： https://github.com/zonghaishang/fastjson
 框架地址 ： https://github.com/alibaba/fastjson
 ```
