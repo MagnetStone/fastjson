@@ -126,14 +126,14 @@ public class IOUtils {
 
     public final static char[]    replaceChars               = new char[93];
     static {
-        specicalFlags_doubleQuotes['\0'] = 4;
-        specicalFlags_doubleQuotes['\1'] = 4;
-        specicalFlags_doubleQuotes['\2'] = 4;
-        specicalFlags_doubleQuotes['\3'] = 4;
-        specicalFlags_doubleQuotes['\4'] = 4;
-        specicalFlags_doubleQuotes['\5'] = 4;
-        specicalFlags_doubleQuotes['\6'] = 4;
-        specicalFlags_doubleQuotes['\7'] = 4;
+        specicalFlags_doubleQuotes['\0'] = 4;  // 空字符
+        specicalFlags_doubleQuotes['\1'] = 4;  // 标题开始
+        specicalFlags_doubleQuotes['\2'] = 4;  // 正文开始
+        specicalFlags_doubleQuotes['\3'] = 4;  // 正文结束
+        specicalFlags_doubleQuotes['\4'] = 4;  // 传输结束
+        specicalFlags_doubleQuotes['\5'] = 4;  // 请求
+        specicalFlags_doubleQuotes['\6'] = 4;  // 收到通知
+        specicalFlags_doubleQuotes['\7'] = 4;  // 响铃
         specicalFlags_doubleQuotes['\b'] = 1; // 8
         specicalFlags_doubleQuotes['\t'] = 1; // 9
         specicalFlags_doubleQuotes['\n'] = 1; // 10

@@ -856,6 +856,7 @@ public final class SerializeWriter extends Writer {
 
                     if (isEnabled(SerializerFeature.BrowserSecure)) {
                        if (ch == '(' || ch == ')' || ch == '<' || ch == '>') {
+                            /** ascii转换成native编码 */
                             write('\\');
                             write('u');
                             write(IOUtils.DIGITS[(ch >>> 12) & 15]);
@@ -867,20 +868,22 @@ public final class SerializeWriter extends Writer {
                     }
 
                     if (isEnabled(SerializerFeature.BrowserCompatible)) {
-                        if (ch == '\b' //
-                            || ch == '\f' //
-                            || ch == '\n' //
-                            || ch == '\r' //
-                            || ch == '\t' //
-                            || ch == '"' //
-                            || ch == '/' //
-                            || ch == '\\') {
-                            write('\\');
+                        if (ch == '\b'      //  退格
+                            || ch == '\f'   //  分页
+                            || ch == '\n'   //  换行
+                            || ch == '\r'   //  回车
+                            || ch == '\t'   //  tab
+                            || ch == '"'    //  双引号
+                            || ch == '/'    //  左反斜杠
+                            || ch == '\\') {//  单引号
+                            /** 输出转义字符 + 字符ascii码 */
+                            write('\\'); //  右反斜杠
                             write(replaceChars[(int) ch]);
                             continue;
                         }
 
                         if (ch < 32) {
+                            /** ascii转换成native编码 */
                             write('\\');
                             write('u');
                             write('0');
@@ -891,6 +894,7 @@ public final class SerializeWriter extends Writer {
                         }
 
                         if (ch >= 127) {
+                            /** ascii转换成native编码 */
                             write('\\');
                             write('u');
                             write(IOUtils.DIGITS[(ch >>> 12) & 15]);
@@ -900,6 +904,7 @@ public final class SerializeWriter extends Writer {
                             continue;
                         }
                     } else {
+                        /** ascii转换成native编码 */
                         if (ch < IOUtils.specicalFlags_doubleQuotes.length
                             && IOUtils.specicalFlags_doubleQuotes[ch] != 0 //
                             || (ch == '/' && isEnabled(SerializerFeature.WriteSlashAsSpecial))) {
@@ -917,15 +922,18 @@ public final class SerializeWriter extends Writer {
                         }
                     }
 
+                    /** 非特殊字符，直接输出 */
                     write(ch);
                 }
 
+                /** 字符串结束 */
                 write('"');
                 if (seperator != 0) {
                     write(seperator);
                 }
                 return;
             }
+            /** buffer容量不够并且输出器为空，触发扩容 */
             expandCapacity(newcount);
         }
 
@@ -933,6 +941,7 @@ public final class SerializeWriter extends Writer {
         int end = start + len;
 
         buf[count] = '\"';
+        /** buffer能够容纳字符串，直接拷贝text到buf缓冲数组 */
         text.getChars(0, len, buf, start);
 
         count = newcount;
