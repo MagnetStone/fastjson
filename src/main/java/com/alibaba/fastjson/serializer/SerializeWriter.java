@@ -501,6 +501,7 @@ public final class SerializeWriter extends Writer {
         write(text, 0, text.length());
     }
 
+    /***/
     public void writeInt(int i) {
         if (i == Integer.MIN_VALUE) {
             write("-2147483648");

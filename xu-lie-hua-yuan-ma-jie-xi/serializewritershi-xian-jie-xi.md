@@ -53,5 +53,6 @@ com.alibaba.fastjson.serializer.SerializeWriter类非常重要，序列化输出
     protected long                           sepcialBits;
 ```
 
-
+## SerializeWriter成员函数
+### 序列化整形数字
 
