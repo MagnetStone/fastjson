@@ -172,7 +172,7 @@ com.alibaba.fastjson.serializer.SerializeWriter类非常重要，序列化输出
         }
     }
     
-       public void writeFloat(float value, boolean checkWriteClassName) {
+      public void writeFloat(float value, boolean checkWriteClassName) {
         /** 如果value不合法或者是无穷数，调用writeNull */
         if (Float.isNaN(value) //
                 || Float.isInfinite(value)) {
