@@ -95,8 +95,56 @@ com.alibaba.fastjson.serializer.SerializeWriter类非常重要，序列化输出
 ### 序列化长整形数字
 
 ``` java
+    public void writeLong(long i) {
+        boolean needQuotationMark = isEnabled(SerializerFeature.BrowserCompatible) //
+                                    && (!isEnabled(SerializerFeature.WriteClassName)) //
+                                    && (i > 9007199254740991L || i < -9007199254740991L);
 
+        if (i == Long.MIN_VALUE) {
+            if (needQuotationMark) write("\"-9223372036854775808\"");
+            /** 如果是长整数最小值，调用字符串函数输出到缓冲区*/
+            else write("-9223372036854775808");
+            return;
+        }
+
+        /** 根据数字判断占用的位数，负数会多一位用于存储字符`-` */
+        int size = (i < 0) ? IOUtils.stringSize(-i) + 1 : IOUtils.stringSize(i);
+
+        int newcount = count + size;
+        if (needQuotationMark) newcount += 2;
+        /** 如果当前存储空间不够 */
+        if (newcount > buf.length) {
+            if (writer == null) {
+                /** 扩容到为原有buf容量1.5倍+1, copy原有buf的字符*/
+                expandCapacity(newcount);
+            } else {
+                char[] chars = new char[size];
+                /** 将长整数i转换成单字符并存储到chars数组 */
+                IOUtils.getChars(i, size, chars);
+                if (needQuotationMark) {
+                    write('"');
+                    write(chars, 0, chars.length);
+                    write('"');
+                } else {
+                    write(chars, 0, chars.length);
+                }
+                return;
+            }
+        }
+
+        /** 添加引号 */
+        if (needQuotationMark) {
+            buf[count] = '"';
+            IOUtils.getChars(i, newcount - 1, buf);
+            buf[newcount - 1] = '"';
+        } else {
+            IOUtils.getChars(i, newcount, buf);
+        }
+
+        count = newcount;
+    }
 ```
+序列化长整型和整型非常类似，增加了双引号判断，采用用了和Integer转换为单字符同样的技巧。
 
 
 

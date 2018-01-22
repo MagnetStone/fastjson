@@ -733,15 +733,19 @@ public final class SerializeWriter extends Writer {
             return;
         }
 
+        /** 根据数字判断占用的位数，负数会多一位用于存储字符`-` */
         int size = (i < 0) ? IOUtils.stringSize(-i) + 1 : IOUtils.stringSize(i);
 
         int newcount = count + size;
         if (needQuotationMark) newcount += 2;
+        /** 如果当前存储空间不够 */
         if (newcount > buf.length) {
             if (writer == null) {
+                /** 扩容到为原有buf容量1.5倍+1, copy原有buf的字符*/
                 expandCapacity(newcount);
             } else {
                 char[] chars = new char[size];
+                /** 将长整数i转换成单字符并存储到chars数组 */
                 IOUtils.getChars(i, size, chars);
                 if (needQuotationMark) {
                     write('"');
@@ -754,6 +758,7 @@ public final class SerializeWriter extends Writer {
             }
         }
 
+        /** 添加引号 */
         if (needQuotationMark) {
             buf[count] = '"';
             IOUtils.getChars(i, newcount - 1, buf);
