@@ -92,6 +92,11 @@ com.alibaba.fastjson.serializer.SerializeWriter类非常重要，序列化输出
 ```
 其中值得提一下的是IOUtils.getChars，里面利用了Integer.getChars(int i, int index, char[] buf),主要的思想是整数超过65536 进行除以100, 循环取出数字后两位，依次将个位和十位转换为单字符，如果整数小于等于65536，进行除以10，取出个位数字并转换单字符，getCharts中 q = (i * 52429) >>> (16+3)，可以理解为 i*0.1, 但是精度更高。
 
+### 序列化长整形数字
+
+``` java
+
+```
 
 
 
