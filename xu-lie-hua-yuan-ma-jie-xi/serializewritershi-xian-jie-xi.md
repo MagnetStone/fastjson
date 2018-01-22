@@ -33,12 +33,16 @@ fastjson核心功能包括序列化和反序列化，序列化的含义是将jav
     /** 禁用字段循环引用探测 */
     protected boolean                        disableCircularReferenceDetect;
     protected boolean                        beanToArray;
+    /** 按照toString方式获取对象字面值 */
     protected boolean                        writeNonStringValueAsString;
+    /** 如果字段默认值不输出，比如原型int，默认值0不输出 */
     protected boolean                        notWriteDefaultValue;
+    /** 序列化枚举时使用枚举name */
     protected boolean                        writeEnumUsingName;
+    /** 序列化枚举时使用枚举toString值 */
     protected boolean                        writeEnumUsingToString;
     protected boolean                        writeDirect;
-
+    /** key分隔符，默认单引号是'，双引号是" */
     protected char                           keySeperator;
 
     protected int                            maxBufSize = -1;
