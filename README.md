@@ -7,7 +7,7 @@
 微信：skyingshang
 ```
 
-#### 点击[https://zonghaishang.gitbooks.io/fastjson-source-code-analysis/content/](https://zonghaishang.gitbooks.io/fastjson-source-code-analysis/content/ "fastjson源码分析")阅读
+欢迎点击[fastjson源码分析](https://zonghaishang.gitbooks.io/fastjson-source-code-analysis/content/)在线阅读
 
 #### 我在工作之余编写源码解析的目的：
 
