@@ -501,29 +501,35 @@ public final class SerializeWriter extends Writer {
         write(text, 0, text.length());
     }
 
-    /***/
     public void writeInt(int i) {
+        /** 如果是整数最小值，调用字符串函数输出到缓冲区*/
         if (i == Integer.MIN_VALUE) {
             write("-2147483648");
             return;
         }
 
+        /** 根据数字判断占用的位数，负数会多一位用于存储字符`-` */
         int size = (i < 0) ? IOUtils.stringSize(-i) + 1 : IOUtils.stringSize(i);
 
         int newcount = count + size;
+        /** 如果当前存储空间不够 */
         if (newcount > buf.length) {
             if (writer == null) {
+                /** 扩容到为原有buf容量1.5倍+1, copy原有buf的字符*/
                 expandCapacity(newcount);
             } else {
                 char[] chars = new char[size];
+                /** 将整数i转换成单字符并存储到chars数组 */
                 IOUtils.getChars(i, size, chars);
+                /** 将chars字符数组内容写到buffer中*/
                 write(chars, 0, chars.length);
                 return;
             }
         }
 
+        /** 如果buffer空间够，直接将字符写到buffer中 */
         IOUtils.getChars(i, newcount, buf);
-
+        /** 重新计数buffer中字符数 */
         count = newcount;
     }
 
