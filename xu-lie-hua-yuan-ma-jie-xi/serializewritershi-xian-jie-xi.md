@@ -194,6 +194,7 @@ com.alibaba.fastjson.serializer.SerializeWriter类非常重要，序列化输出
     }
     
 ```
+序列化浮点类型的基本思路是先转换为字符串，然后在输出到输出流中。
 
 ### 序列化枚举类型
 
