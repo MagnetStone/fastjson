@@ -238,14 +238,17 @@ public final class SerializeWriter extends Writer {
      */
     public void write(int c) {
         int newcount = count + 1;
+        /** 如果当前存储空间不够 */
         if (newcount > buf.length) {
             if (writer == null) {
                 expandCapacity(newcount);
             } else {
+                /** 强制流输出并刷新缓冲区 */
                 flush();
                 newcount = 1;
             }
         }
+        /** 存储单字符到buffer并更新计数 */
         buf[count] = (char) c;
         count = newcount;
     }
