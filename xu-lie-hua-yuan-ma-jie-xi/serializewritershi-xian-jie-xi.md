@@ -6,6 +6,8 @@ fastjson核心功能包括序列化和反序列化，序列化的含义是将jav
 
 ## SerializeWriter成员变量
 
+com.alibaba.fastjson.serializer.SerializeWriter类非常重要，序列化输出都是通过转换底层操作，重要字段如下：
+
 ```
     /** 字符类型buffer */
     private final static ThreadLocal<char[]> bufLocal      = new ThreadLocal<char[]>();
