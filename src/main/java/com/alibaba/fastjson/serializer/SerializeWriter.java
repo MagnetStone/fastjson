@@ -950,11 +950,13 @@ public final class SerializeWriter extends Writer {
             int lastSpecialIndex = -1;
 
             for (int i = start; i < end; ++i) {
+                /** 循环提取字符串中字符 */
                 char ch = buf[i];
 
                 if (ch == '"' //
                     || ch == '/' //
                     || ch == '\\') {
+                    /** 记录指定字符最后出现的位置 */
                     lastSpecialIndex = i;
                     newcount += 1;
                     continue;
@@ -965,6 +967,7 @@ public final class SerializeWriter extends Writer {
                     || ch == '\n' //
                     || ch == '\r' //
                     || ch == '\t') {
+                    /** 记录指定字符最后出现的位置 */
                     lastSpecialIndex = i;
                     newcount += 1;
                     continue;
@@ -983,11 +986,13 @@ public final class SerializeWriter extends Writer {
                 }
             }
 
+            /** 如果存储空间不足，触发到(1.5倍buffer大小+1) */
             if (newcount > buf.length) {
                 expandCapacity(newcount);
             }
             count = newcount;
 
+            /** 逆向从指定特殊字符开始遍历 */
             for (int i = lastSpecialIndex; i >= start; --i) {
                 char ch = buf[i];
 
@@ -996,8 +1001,10 @@ public final class SerializeWriter extends Writer {
                     || ch == '\n' //
                     || ch == '\r' //
                     || ch == '\t') {
+                    /** 将字符后移一位，插入转译字符\ */
                     System.arraycopy(buf, i + 1, buf, i + 2, end - i - 1);
                     buf[i] = '\\';
+                    /** 将特殊字符转换成普通单字符 */
                     buf[i + 1] = replaceChars[(int) ch];
                     end += 1;
                     continue;
@@ -1006,6 +1013,7 @@ public final class SerializeWriter extends Writer {
                 if (ch == '"' //
                     || ch == '/' //
                     || ch == '\\') {
+                    /** 和上面处理一致，不需要单独替换成普通字符 */
                     System.arraycopy(buf, i + 1, buf, i + 2, end - i - 1);
                     buf[i] = '\\';
                     buf[i + 1] = ch;
@@ -1015,6 +1023,7 @@ public final class SerializeWriter extends Writer {
 
                 if (ch < 32) {
                     System.arraycopy(buf, i + 1, buf, i + 6, end - i - 1);
+                    /** ascii转换成native编码 */
                     buf[i] = '\\';
                     buf[i + 1] = 'u';
                     buf[i + 2] = '0';
@@ -1027,6 +1036,7 @@ public final class SerializeWriter extends Writer {
 
                 if (ch >= 127) {
                     System.arraycopy(buf, i + 1, buf, i + 6, end - i - 1);
+                    /** ascii转换成native编码 */
                     buf[i] = '\\';
                     buf[i + 1] = 'u';
                     buf[i + 2] = IOUtils.DIGITS[(ch >>> 12) & 15];
@@ -1037,6 +1047,7 @@ public final class SerializeWriter extends Writer {
                 }
             }
 
+            /** 追加引用符号 */
             if (seperator != 0) {
                 buf[count - 2] = '\"';
                 buf[count - 1] = seperator;
