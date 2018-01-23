@@ -185,29 +185,6 @@ writeHex 这个序列化方法主要对16进制的自己转换为占用2个ascii
 
 writeByteArray序列化字节数组实际上就是做了base64编码转换，代码添加了详尽的注释帮助理解。
 
-### 序列化Null
-
-```java
-    public void writeNull() {
-        /** 调用输出字符串null */
-        write("null");
-    }
-```
-
-### 序列化Boolean
-
-```java
-    public void write(boolean value) {
-        if (value) {
-            /** 输出true字符串 */
-            write("true");
-        } else {
-            /** 输出false字符串 */
-            write("false");
-        }
-    }
-```
-
 ### 序列化字符串
 
 ```java

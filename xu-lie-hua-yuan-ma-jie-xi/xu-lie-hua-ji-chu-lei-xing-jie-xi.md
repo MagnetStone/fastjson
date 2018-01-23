@@ -250,3 +250,26 @@ com.alibaba.fastjson.serializer.SerializeWriter类非常重要，序列化输出
         count = newcount;
     }
 ```
+
+### 序列化Null
+
+```java
+    public void writeNull() {
+        /** 调用输出字符串null */
+        write("null");
+    }
+```
+
+### 序列化Boolean
+
+```java
+    public void write(boolean value) {
+        if (value) {
+            /** 输出true字符串 */
+            write("true");
+        } else {
+            /** 输出false字符串 */
+            write("false");
+        }
+    }
+```
