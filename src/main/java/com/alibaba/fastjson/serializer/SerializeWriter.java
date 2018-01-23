@@ -1736,7 +1736,7 @@ public final class SerializeWriter extends Writer {
                         /** 字符串为空，直接输出null字符串 */
                         write("null");
                     } else {
-                        /** 下文分析 */
+                        /** 使用双引号输出，并且处理特殊字符 */
                         writeStringWithDoubleQuote(text, (char) 0);
                     }
                 }
@@ -2474,6 +2474,7 @@ public final class SerializeWriter extends Writer {
 
         if (useSingleQuotes) {
             if (quoteFieldNames) {
+                /** 使用单引号并且在字段后面加'：'输出 标准的json key*/
                 writeStringWithSingleQuote(key);
                 write(':');
             } else {
@@ -2481,6 +2482,7 @@ public final class SerializeWriter extends Writer {
             }
         } else {
             if (quoteFieldNames) {
+                /** 使用双引号输出json key 并添加 ： */
                 writeStringWithDoubleQuote(key, ':');
             } else {
                 boolean hashSpecial = key.length() == 0;
@@ -2493,8 +2495,10 @@ public final class SerializeWriter extends Writer {
                     }
                 }
                 if (hashSpecial) {
+                    /** 如果包含特殊字符，会进行特殊字符转换输出，eg: 使用转换后的native编码输出 */
                     writeStringWithDoubleQuote(key, ':');
                 } else {
+                    /** 输出字段不加引号 */
                     write(key);
                     write(':');
                 }

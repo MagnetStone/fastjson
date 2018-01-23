@@ -591,7 +591,7 @@ writeByteArray序列化字节数组实际上就是做了base64编码转换，代
                         /** 字符串为空，直接输出null字符串 */
                         write("null");
                     } else {
-                        /** 下文分析 */
+                        /** 使用双引号输出，并且处理特殊字符, 下文有分析 */
                         writeStringWithDoubleQuote(text, (char) 0);
                     }
                 }
