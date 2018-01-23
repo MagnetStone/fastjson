@@ -641,6 +641,7 @@ public final class SerializeWriter extends Writer {
     }
 
     public void writeHex(byte[] bytes) {
+        /** 计算总共字符长度, 乘以2 代表一个字符要占用2字节, 3代表要添加 x 和 前后添加' */
         int newcount = count + bytes.length * 2 + 3;
         if (newcount > buf.length) {
             if (writer != null) {
@@ -653,9 +654,15 @@ public final class SerializeWriter extends Writer {
                     byte b = bytes[i];
 
                     int a = b & 0xFF;
+                    /** 取字节的高四位 1111 0000*/
                     int b0 = a >> 4;
+                    /** 取字节的低四位 0000 1111*/
                     int b1 = a & 0xf;
 
+                    /** 索引低索引存储字节高位
+                     *  如果4位表示的数字是 0~9, 转换为ascii的 0~9
+                     *  如果4位表示的不是数字, 转换为16进制ascii码字符
+                     */
                     chars[pos++] = (char) (b0 + (b0 < 10 ? 48 : 55));
                     chars[pos++] = (char) (b1 + (b1 < 10 ? 48 : 55));
                 }
@@ -667,6 +674,7 @@ public final class SerializeWriter extends Writer {
                 }
                 return;
             }
+            /** buffer容量不够并且输出器为空，触发扩容 */
             expandCapacity(newcount);
         }
 
@@ -677,9 +685,15 @@ public final class SerializeWriter extends Writer {
             byte b = bytes[i];
 
             int a = b & 0xFF;
+            /** 取字节的高四位 */
             int b0 = a >> 4;
+            /** 取字节的低四位 */
             int b1 = a & 0xf;
 
+            /** 索引低索引存储字节高位
+             *  如果4位表示的数字是 0~9, 转换为ascii的 0~9
+             *  如果4位表示的不是数字, 转换为16进制ascii码字符
+             */
             buf[count++] = (char) (b0 + (b0 < 10 ? 48 : 55));
             buf[count++] = (char) (b1 + (b1 < 10 ? 48 : 55));
         }

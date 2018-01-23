@@ -968,3 +968,68 @@ writeStringWithSingleQuote这个方法主要做了以下几件事情：
 
 另外一个针对特殊字符的字符串序列化方法writeStringWithSingleQuote(char[])，因为和writeStringWithSingleQuote(String)版本极其类似，所以不再冗余分析。
 
+### 序列化16进制字节数组
+
+``` java
+    public void writeHex(byte[] bytes) {
+        /** 计算总共字符长度, 乘以2 代表一个字符要占用2字节, 3代表要添加 x 和 前后添加' */
+        int newcount = count + bytes.length * 2 + 3;
+        if (newcount > buf.length) {
+            if (writer != null) {
+                char[] chars = new char[bytes.length + 3];
+                int pos = 0;
+                chars[pos++] = 'x';
+                chars[pos++] = '\'';
+
+                for (int i = 0; i < bytes.length; ++i) {
+                    byte b = bytes[i];
+
+                    int a = b & 0xFF;
+                    /** 取字节的高四位 1111 0000*/
+                    int b0 = a >> 4;
+                    /** 取字节的低四位 0000 1111*/
+                    int b1 = a & 0xf;
+
+                    /** 索引低索引存储字节高位
+                     *  如果4位表示的数字是 0~9, 转换为ascii的 0~9
+                     *  如果4位表示的不是数字, 转换为16进制ascii码字符
+                     */
+                    chars[pos++] = (char) (b0 + (b0 < 10 ? 48 : 55));
+                    chars[pos++] = (char) (b1 + (b1 < 10 ? 48 : 55));
+                }
+                chars[pos++] = '\'';
+                try {
+                    writer.write(chars);
+                } catch (IOException ex) {
+                    throw new JSONException("writeBytes error.", ex);
+                }
+                return;
+            }
+            /** buffer容量不够并且输出器为空，触发扩容 */
+            expandCapacity(newcount);
+        }
+
+        buf[count++] = 'x';
+        buf[count++] = '\'';
+
+        for (int i = 0; i < bytes.length; ++i) {
+            byte b = bytes[i];
+
+            int a = b & 0xFF;
+            /** 取字节的高四位 */
+            int b0 = a >> 4;
+            /** 取字节的低四位 */
+            int b1 = a & 0xf;
+
+            /** 索引低索引存储字节高位
+             *  如果4位表示的数字是 0~9, 转换为ascii的 0~9
+             *  如果4位表示的不是数字, 转换为16进制ascii码字符
+             */
+            buf[count++] = (char) (b0 + (b0 < 10 ? 48 : 55));
+            buf[count++] = (char) (b1 + (b1 < 10 ? 48 : 55));
+        }
+        buf[count++] = '\'';
+    }
+```
+
+writeHex 这个序列化方法主要对16进制的自己转换为占用2个ascii码字符，添加单引号和x前缀。
