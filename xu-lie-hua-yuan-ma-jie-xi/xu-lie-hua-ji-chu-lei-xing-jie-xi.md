@@ -6,7 +6,7 @@ fastjson核心功能包括序列化和反序列化，序列化的含义是将jav
 
 ## SerializeWriter成员变量
 
-com.alibaba.fastjson.serializer.SerializeWriter类非常重要，序列化输出都是通过转换底层操作，重要字段如下：
+`com.alibaba.fastjson.serializer.SerializeWriter`类非常重要，序列化输出都是通过转换底层操作，重要字段如下：
 
 ```java
     /** 字符类型buffer */
@@ -91,7 +91,7 @@ com.alibaba.fastjson.serializer.SerializeWriter类非常重要，序列化输出
     }
 ```
 
-其中值得提一下的是IOUtils.getChars，里面利用了Integer.getChars\(int i, int index, char\[\] buf\),主要的思想是整数超过65536 进行除以100, 循环取出数字后两位，依次将个位和十位转换为单字符，如果整数小于等于65536，进行除以10，取出个位数字并转换单字符，getCharts中 q = \(i \* 52429\) &gt;&gt;&gt; \(16+3\)，可以理解为 \(i乘以0.1\), 但是精度更高。
+其中值得提一下的是`IOUtils.getChars`，里面利用了`Integer.getChars(int i, int index, char[] buf)`,主要的思想是整数超过65536 进行除以100, 循环取出数字后两位，依次将个位和十位转换为单字符，如果整数小于等于65536，进行除以10，取出个位数字并转换单字符，getCharts中 `q = (i * 52429) >>> (16+3)`，可以理解为 (i乘以0.1), 但是精度更高。
 
 ### 序列化长整形数字
 

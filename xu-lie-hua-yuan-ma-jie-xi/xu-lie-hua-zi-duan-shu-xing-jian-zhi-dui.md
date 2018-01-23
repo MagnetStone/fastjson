@@ -51,7 +51,7 @@
 1. 完成字段特殊字符的转译
 2. 添加字段的引号
 
-处理输出key的特殊字符方法writeStringWithDoubleQuote前面已经分析过了，序列化字段名称是否需要添加引号和特殊字符处理参考writeKeyWithSingleQuoteIfHasSpecial：
+处理输出key的特殊字符方法`writeStringWithDoubleQuote`前面已经分析过了，序列化字段名称是否需要添加引号和特殊字符处理参考`writeKeyWithSingleQuoteIfHasSpecial`：
 
 ``` java
     private void writeKeyWithSingleQuoteIfHasSpecial(String text) {
@@ -273,4 +273,4 @@
     }
 ```
 
-序列化int类型的键值对属性，因为不涉及特殊字符，主要就是把原型序列化为字面量值。截止到现在，已经把核心SerializWriter类讲完了，剩余字段键值对极其类似writeFieldValue boolean和int等，因此无需冗余分析。因为序列化真正开始之前，这个类极其基础并且非常重要，因此花的时间较多。
+序列化int类型的键值对属性，因为不涉及特殊字符，主要就是把原型序列化为字面量值。截止到现在，已经把核心`SerializWriter`类讲完了，剩余字段键值对极其类似`writeFieldValue` boolean和int等，因此无需冗余分析。因为序列化真正开始之前，这个类极其基础并且非常重要，因此花的时间较多。

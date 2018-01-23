@@ -1,6 +1,6 @@
 ## 概要
 
-fastjson序列化主要使用入口就是在JSON.java类中，它提供非常简便和友好的api将java对象转换成json字符串。
+fastjson序列化主要使用入口就是在`JSON.java`类中，它提供非常简便和友好的api将java对象转换成json字符串。
 
 ### JSON成员函数
 

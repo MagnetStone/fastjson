@@ -64,7 +64,7 @@
     }
 ```
 
-writeHex 这个序列化方法主要对16进制的自己转换为占用2个ascii码字符，添加单引号和x前缀。
+`writeHex` 这个序列化方法主要对16进制的自己转换为占用2个ascii码字符，添加单引号和x前缀。
 
 ### 序列化byte字节数组
 
@@ -185,7 +185,7 @@ writeHex 这个序列化方法主要对16进制的自己转换为占用2个ascii
     }
 ```
 
-writeByteArray序列化字节数组实际上就是做了base64编码转换，代码添加了详尽的注释帮助理解。
+`writeByteArray`序列化字节数组实际上就是做了base64编码转换，代码添加了详尽的注释帮助理解。
 
 ### 序列化字符串
 
@@ -223,7 +223,7 @@ writeByteArray序列化字节数组实际上就是做了base64编码转换，代
     }
 ```
 
-序列化字符串write\(string\),最终都会转化为上面形式write\(string, 0, string.length\)。
+序列化字符串`write(string)`,最终都会转化为上面形式`write(string, 0, string.length)`。
 
 ### 序列化字符数组
 
@@ -354,7 +354,7 @@ writeByteArray序列化字节数组实际上就是做了base64编码转换，代
     }
 ```
 
-序列化字符串会转化成\[“element”, "element", ...\]格式。如果列表字符串中包含特殊字符，调用特化版本writeStringWithDoubleQuote\(text, \(char\) 0\)。
+序列化字符串会转化成`[“element”, "element", ...]`格式。如果列表字符串中包含特殊字符，调用特化版本`writeStringWithDoubleQuote(text, (char) 0)`。
 
 ### 序列化包含特殊字符字符串
 
@@ -774,7 +774,7 @@ writeByteArray序列化字节数组实际上就是做了base64编码转换，代
 writeStringWithDoubleQuote方法实现实在是太长了，这个方法主要做了以下几件事情：
 
 1. 如果开启序列化BrowserCompatible特性，执行ascii转换成native编码，节省空间。
-2. 如果输出器writer不为空，会自动触发buffer扩容\(原有容量1.5倍+1\)。
+2. 如果输出器writer不为空，会自动触发buffer扩容`(原有容量1.5倍+1)`。
 
 另外一个针对特殊字符的字符串序列化方法writeStringWithDoubleQuote(char[] text, final char seperator)，因为和writeStringWithDoubleQuote(String text, final char seperator)版本极其类似，所以不再冗余分析。
 
@@ -877,6 +877,6 @@ writeStringWithDoubleQuote方法实现实在是太长了，这个方法主要做
 writeStringWithSingleQuote这个方法主要做了以下几件事情：
 
 1. 针对特殊字符，添加转译字符并且替换特殊字符为普通字符
-2. 如果输出器writer不为空，会自动触发buffer扩容\(原有容量1.5倍+1\)。
+2. 如果输出器writer不为空，会自动触发buffer扩容`(原有容量1.5倍+1)`。
 
-另外一个针对特殊字符的字符串序列化方法writeStringWithSingleQuote(char[])，因为和writeStringWithSingleQuote(String)版本极其类似，所以不再冗余分析。
+另外一个针对特殊字符的字符串序列化方法`writeStringWithSingleQuote(char[])`，因为和`writeStringWithSingleQuote(String)`版本极其类似，所以不再冗余分析。
