@@ -682,10 +682,12 @@ public abstract class JSON implements JSONStreamAware, JSONAware {
 
             if (filters != null) {
                 for (SerializeFilter filter : filters) {
+                    /** 添加拦截器 */
                     serializer.addFilter(filter);
                 }
             }
 
+            /** 使用序列化实例转换对象，查找具体序列化实例委托给config查找 */
             serializer.write(object);
 
             return out.toString();
