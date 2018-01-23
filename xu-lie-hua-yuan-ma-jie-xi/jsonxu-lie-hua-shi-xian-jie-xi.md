@@ -107,3 +107,33 @@ fastjson序列化主要使用入口就是在`JSON.java`类中，它提供非常�
                Type fieldType,      /** 待序列化字段类型 */
                int features) throws IOException;
 ```
+
+当fastjson序列化特定的字段时会回调这个方法。
+
+我们继续跟踪`writer.write(this, object, null, null, 0)` : 
+
+``` java
+    public final void write(Object object) {
+        if (object == null) {
+            /** 如果对象为空，直接输出 "null" 字符串 */
+            out.writeNull();
+            return;
+        }
+
+        Class<?> clazz = object.getClass();
+        /** 根据对象的Class类型查找具体序列化实例 */
+        ObjectSerializer writer = getObjectWriter(clazz);
+
+        try {
+            /** 使用具体serializer实例处理对象 */
+            writer.write(this, object, null, null, 0);
+        } catch (IOException e) {
+            throw new JSONException(e.getMessage(), e);
+        }
+    }
+```
+
+我们发现在方法内部调用`getObjectWriter(clazz)`根据具体类型查找序列化实例，方法内部只有一行： `config.getObjectWriter(clazz)`，让我们更进一步查看委托实现细节：
+
+``` java
+```
