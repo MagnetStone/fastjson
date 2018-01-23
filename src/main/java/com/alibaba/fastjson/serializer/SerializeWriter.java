@@ -1066,11 +1066,12 @@ public final class SerializeWriter extends Writer {
         for (int i = start; i < end; ++i) {
             char ch = buf[i];
 
-            if (ch >= ']') { // 93
-                if (ch >= 0x7F //
+            if (ch >= ']') { //   93
+                /** 特殊字符参考：http://www.mokuge.com/tool/asciito16/ */
+                if (ch >= 0x7F // 127
                         && (ch == '\u2028' //
-                        || ch == '\u2029' //
-                        || ch < 0xA0)) {
+                        || ch == '\u2029'  //
+                        || ch < 0xA0)) {   // 160 [空格]
                     if (firstSpecialIndex == -1) {
                         firstSpecialIndex = i;
                     }
@@ -1107,6 +1108,7 @@ public final class SerializeWriter extends Writer {
 
         if (specialCount > 0) {
             newcount += specialCount;
+            /** 包含特殊字符并且buffer空间不够，触发扩容 */
             if (newcount > buf.length) {
                 expandCapacity(newcount);
             }
