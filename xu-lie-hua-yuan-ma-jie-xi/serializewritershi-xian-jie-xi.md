@@ -8,7 +8,7 @@ fastjson核心功能包括序列化和反序列化，序列化的含义是将jav
 
 com.alibaba.fastjson.serializer.SerializeWriter类非常重要，序列化输出都是通过转换底层操作，重要字段如下：
 
-``` java
+```java
     /** 字符类型buffer */
     private final static ThreadLocal<char[]> bufLocal      = new ThreadLocal<char[]>();
     /** 字节类型buffer */
@@ -57,7 +57,7 @@ com.alibaba.fastjson.serializer.SerializeWriter类非常重要，序列化输出
 
 ### 序列化整形数字
 
-``` java
+```java
     public void writeInt(int i) {
         /** 如果是整数最小值，调用字符串函数输出到缓冲区*/
         if (i == Integer.MIN_VALUE) {
@@ -90,11 +90,12 @@ com.alibaba.fastjson.serializer.SerializeWriter类非常重要，序列化输出
         count = newcount;
     }
 ```
-其中值得提一下的是IOUtils.getChars，里面利用了Integer.getChars(int i, int index, char[] buf),主要的思想是整数超过65536 进行除以100, 循环取出数字后两位，依次将个位和十位转换为单字符，如果整数小于等于65536，进行除以10，取出个位数字并转换单字符，getCharts中 q = (i * 52429) >>> (16+3)，可以理解为 (i乘以0.1), 但是精度更高。
+
+其中值得提一下的是IOUtils.getChars，里面利用了Integer.getChars\(int i, int index, char\[\] buf\),主要的思想是整数超过65536 进行除以100, 循环取出数字后两位，依次将个位和十位转换为单字符，如果整数小于等于65536，进行除以10，取出个位数字并转换单字符，getCharts中 q = \(i \* 52429\) &gt;&gt;&gt; \(16+3\)，可以理解为 \(i乘以0.1\), 但是精度更高。
 
 ### 序列化长整形数字
 
-``` java
+```java
     public void writeLong(long i) {
         boolean needQuotationMark = isEnabled(SerializerFeature.BrowserCompatible) //
                                     && (!isEnabled(SerializerFeature.WriteClassName)) //
@@ -144,11 +145,12 @@ com.alibaba.fastjson.serializer.SerializeWriter类非常重要，序列化输出
         count = newcount;
     }
 ```
+
 序列化长整型和整型非常类似，增加了双引号判断，采用用了和Integer转换为单字符同样的技巧。
 
 ### 序列化浮点类型数字
 
-``` java
+```java
     public void writeDouble(double doubleValue, boolean checkWriteClassName) {
         /** 如果doubleValue不合法或者是无穷数，调用writeNull */
         if (Double.isNaN(doubleValue)
@@ -171,7 +173,7 @@ com.alibaba.fastjson.serializer.SerializeWriter类非常重要，序列化输出
             }
         }
     }
-    
+
      public void writeFloat(float value, boolean checkWriteClassName) {
         /** 如果value不合法或者是无穷数，调用writeNull */
         if (Float.isNaN(value) //
@@ -192,20 +194,20 @@ com.alibaba.fastjson.serializer.SerializeWriter类非常重要，序列化输出
             }
         }
     }
-    
 ```
+
 序列化浮点类型的基本思路是先转换为字符串，然后在输出到输出流中。
 
 ### 序列化枚举类型
 
-``` java
+```java
     public void writeEnum(Enum<?> value) {
         if (value == null) {
             /** 如果枚举value为空，调用writeNull输出 */
             writeNull();
             return;
         }
-        
+
         String strVal = null;
         /** 如果开启序列化输出枚举名字作为属性值 */
         if (writeEnumUsingName && !writeEnumUsingToString) {
@@ -230,7 +232,7 @@ com.alibaba.fastjson.serializer.SerializeWriter类非常重要，序列化输出
 
 ### 序列化单字符
 
-``` java
+```java
     public void write(int c) {
         int newcount = count + 1;
         /** 如果当前存储空间不够 */
@@ -251,16 +253,16 @@ com.alibaba.fastjson.serializer.SerializeWriter类非常重要，序列化输出
 
 ### 序列化Null
 
-``` java
+```java
     public void writeNull() {
         /** 调用输出字符串null */
         write("null");
     }
-``` 
+```
 
 ### 序列化Boolean
 
-``` java
+```java
     public void write(boolean value) {
         if (value) {
             /** 输出true字符串 */
@@ -270,11 +272,11 @@ com.alibaba.fastjson.serializer.SerializeWriter类非常重要，序列化输出
             write("false");
         }
     }
-``` 
+```
 
 ### 序列化字符串
 
-``` java
+```java
     public void write(String str, int off, int len) {
         /** 计算总共字符串长度 */
         int newcount = count + len;
@@ -306,13 +308,13 @@ com.alibaba.fastjson.serializer.SerializeWriter类非常重要，序列化输出
         str.getChars(off, off + len, buf, count);
         count = newcount;
     }
-
 ```
-序列化字符串write(string),最终都会转化为上面形式write(string, 0, string.length)。
+
+序列化字符串write\(string\),最终都会转化为上面形式write\(string, 0, string.length\)。
 
 ### 序列化字符数组
 
-``` java
+```java
     public void write(char c[], int off, int len) {
         if (off < 0 //
             || off > c.length //
@@ -357,7 +359,7 @@ com.alibaba.fastjson.serializer.SerializeWriter类非常重要，序列化输出
 
 ### 序列化列表字符串
 
-``` java
+```java
     public void write(List<String> list) {
         if (list.isEmpty()) {
             /** 空字符列表，输出[]字符串 */
@@ -438,9 +440,10 @@ com.alibaba.fastjson.serializer.SerializeWriter类非常重要，序列化输出
         count = offset;
     }
 ```
-序列化字符串会转化成[“element”, "element", ...]格式。如果列表字符串中包含特殊字符，调用特化版本writeStringWithDoubleQuote(text, (char) 0)。
 
-``` java
+序列化字符串会转化成\[“element”, "element", ...\]格式。如果列表字符串中包含特殊字符，调用特化版本writeStringWithDoubleQuote\(text, \(char\) 0\)。
+
+```java
     public void writeStringWithDoubleQuote(String text, final char seperator) {
         if (text == null) {
             /** 如果字符换为空，输出null字符串 */
@@ -852,7 +855,11 @@ com.alibaba.fastjson.serializer.SerializeWriter类非常重要，序列化输出
         }
     }
 ```
+
 writeStringWithDoubleQuote方法实现实在是太长了，这个方法主要做了一下几件事情：
 
 1. 如果开启序列化BrowserCompatible特性，执行ascii转换成native编码，节省空间。
-2. 如果输出器writer不为空，会自动触发buffer扩容(原有容量1.5倍+1)。
+2. 如果输出器writer不为空，会自动触发buffer扩容\(原有容量1.5倍+1\)。
+
+
+
