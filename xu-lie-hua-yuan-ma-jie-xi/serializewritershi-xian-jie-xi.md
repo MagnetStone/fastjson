@@ -1376,6 +1376,8 @@ writeStringWithSingleQuote这个方法主要做了以下几件事情：
     }
 ```
 
+序列化boolean类型的键值对属性，因为不涉及特殊字符，主要就是把原型序列化为字面量值。
+
 ### 序列化Int类型字段键值对
 
 ``` java
@@ -1425,3 +1427,5 @@ writeStringWithSingleQuote这个方法主要做了以下几件事情：
         IOUtils.getChars(value, count, buf);
     }
 ```
+
+序列化int类型的键值对属性，因为不涉及特殊字符，主要就是把原型序列化为字面量值。截止到现在，已经把核心SerializWriter类讲完了，剩余字段键值对极其类似writeFieldValue boolean和int等，因此无需冗余分析。因为序列化真正开始之前，这个类极其基础并且非常重要，因此花的时间较多。
