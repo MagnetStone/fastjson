@@ -392,7 +392,418 @@ com.alibaba.fastjson.serializer.SerializeWriter类非常重要，序列化输出
         buf[offset++] = ']';
         count = offset;
     }
-
 ```
 序列化字符串会转化成[“element”, "element", ...]格式。如果列表字符串中包含特殊字符，调用特化版本writeStringWithDoubleQuote(text, (char) 0)。
 
+``` java
+    public void writeStringWithDoubleQuote(String text, final char seperator) {
+        if (text == null) {
+            /** 如果字符换为空，输出null字符串 */
+            writeNull();
+            if (seperator != 0) {
+                /** 如果分隔符不为空白字符' '，输出分隔符 */
+                write(seperator);
+            }
+            return;
+        }
+
+        int len = text.length();
+        int newcount = count + len + 2;
+        if (seperator != 0) {
+            newcount++;
+        }
+
+        /** 如果当前存储空间不够 */
+        if (newcount > buf.length) {
+            if (writer != null) {
+                /** 写双引号字符 */
+                write('"');
+
+                for (int i = 0; i < text.length(); ++i) {
+                    /** 循环提取字符串中字符 */
+                    char ch = text.charAt(i);
+
+                    if (isEnabled(SerializerFeature.BrowserSecure)) {
+                       if (ch == '(' || ch == ')' || ch == '<' || ch == '>') {
+                            /** ascii转换成native编码 */
+                            write('\\');
+                            write('u');
+                            write(IOUtils.DIGITS[(ch >>> 12) & 15]);
+                            write(IOUtils.DIGITS[(ch >>> 8) & 15]);
+                            write(IOUtils.DIGITS[(ch >>> 4) & 15]);
+                            write(IOUtils.DIGITS[ch & 15]);
+                            continue;
+                        }
+                    }
+
+                    if (isEnabled(SerializerFeature.BrowserCompatible)) {
+                        if (ch == '\b'      //  退格
+                            || ch == '\f'   //  分页
+                            || ch == '\n'   //  换行
+                            || ch == '\r'   //  回车
+                            || ch == '\t'   //  tab
+                            || ch == '"'    //  双引号
+                            || ch == '/'    //  左反斜杠
+                            || ch == '\\') {//  单引号
+                            /** 输出转义字符 + 字符ascii码 */
+                            write('\\'); //  右反斜杠
+                            write(replaceChars[(int) ch]);
+                            continue;
+                        }
+
+                        if (ch < 32) {
+                            /** ascii转换成native编码 */
+                            write('\\');
+                            write('u');
+                            write('0');
+                            write('0');
+                            write(IOUtils.ASCII_CHARS[ch * 2]);
+                            write(IOUtils.ASCII_CHARS[ch * 2 + 1]);
+                            continue;
+                        }
+
+                        if (ch >= 127) {
+                            /** ascii转换成native编码 */
+                            write('\\');
+                            write('u');
+                            write(IOUtils.DIGITS[(ch >>> 12) & 15]);
+                            write(IOUtils.DIGITS[(ch >>> 8) & 15]);
+                            write(IOUtils.DIGITS[(ch >>> 4) & 15]);
+                            write(IOUtils.DIGITS[ch & 15]);
+                            continue;
+                        }
+                    } else {
+                        /** ascii转换成native编码 */
+                        if (ch < IOUtils.specicalFlags_doubleQuotes.length
+                            && IOUtils.specicalFlags_doubleQuotes[ch] != 0 //
+                            || (ch == '/' && isEnabled(SerializerFeature.WriteSlashAsSpecial))) {
+                            write('\\');
+                            if (IOUtils.specicalFlags_doubleQuotes[ch] == 4) {
+                                write('u');
+                                write(IOUtils.DIGITS[ch >>> 12 & 15]);
+                                write(IOUtils.DIGITS[ch >>> 8 & 15]);
+                                write(IOUtils.DIGITS[ch >>> 4 & 15]);
+                                write(IOUtils.DIGITS[ch & 15]);
+                            } else {
+                                write(IOUtils.replaceChars[ch]);
+                            }
+                            continue;
+                        }
+                    }
+
+                    /** 非特殊字符，直接输出 */
+                    write(ch);
+                }
+
+                /** 字符串结束 */
+                write('"');
+                if (seperator != 0) {
+                    write(seperator);
+                }
+                return;
+            }
+            /** buffer容量不够并且输出器为空，触发扩容 */
+            expandCapacity(newcount);
+        }
+
+        int start = count + 1;
+        int end = start + len;
+
+        buf[count] = '\"';
+        /** buffer能够容纳字符串，直接拷贝text到buf缓冲数组 */
+        text.getChars(0, len, buf, start);
+
+        count = newcount;
+
+        if (isEnabled(SerializerFeature.BrowserCompatible)) {
+            int lastSpecialIndex = -1;
+
+            for (int i = start; i < end; ++i) {
+                /** 循环提取字符串中字符 */
+                char ch = buf[i];
+
+                if (ch == '"' //
+                    || ch == '/' //
+                    || ch == '\\') {
+                    /** 记录指定字符最后出现的位置 */
+                    lastSpecialIndex = i;
+                    newcount += 1;
+                    continue;
+                }
+
+                if (ch == '\b' //
+                    || ch == '\f' //
+                    || ch == '\n' //
+                    || ch == '\r' //
+                    || ch == '\t') {
+                    /** 记录指定字符最后出现的位置 */
+                    lastSpecialIndex = i;
+                    newcount += 1;
+                    continue;
+                }
+
+                if (ch < 32) {
+                    lastSpecialIndex = i;
+                    newcount += 5;
+                    continue;
+                }
+
+                if (ch >= 127) {
+                    lastSpecialIndex = i;
+                    newcount += 5;
+                    continue;
+                }
+            }
+
+            /** 如果存储空间不足，触发到(1.5倍buffer大小+1) */
+            if (newcount > buf.length) {
+                expandCapacity(newcount);
+            }
+            count = newcount;
+
+            /** 逆向从指定特殊字符开始遍历 */
+            for (int i = lastSpecialIndex; i >= start; --i) {
+                char ch = buf[i];
+
+                if (ch == '\b' //
+                    || ch == '\f'//
+                    || ch == '\n' //
+                    || ch == '\r' //
+                    || ch == '\t') {
+                    /** 将字符后移一位，插入转译字符\ */
+                    System.arraycopy(buf, i + 1, buf, i + 2, end - i - 1);
+                    buf[i] = '\\';
+                    /** 将特殊字符转换成普通单字符 */
+                    buf[i + 1] = replaceChars[(int) ch];
+                    end += 1;
+                    continue;
+                }
+
+                if (ch == '"' //
+                    || ch == '/' //
+                    || ch == '\\') {
+                    /** 和上面处理一致，不需要单独替换成普通字符 */
+                    System.arraycopy(buf, i + 1, buf, i + 2, end - i - 1);
+                    buf[i] = '\\';
+                    buf[i + 1] = ch;
+                    end += 1;
+                    continue;
+                }
+
+                if (ch < 32) {
+                    System.arraycopy(buf, i + 1, buf, i + 6, end - i - 1);
+                    /** ascii转换成native编码 */
+                    buf[i] = '\\';
+                    buf[i + 1] = 'u';
+                    buf[i + 2] = '0';
+                    buf[i + 3] = '0';
+                    buf[i + 4] = IOUtils.ASCII_CHARS[ch * 2];
+                    buf[i + 5] = IOUtils.ASCII_CHARS[ch * 2 + 1];
+                    end += 5;
+                    continue;
+                }
+
+                if (ch >= 127) {
+                    System.arraycopy(buf, i + 1, buf, i + 6, end - i - 1);
+                    /** ascii转换成native编码 */
+                    buf[i] = '\\';
+                    buf[i + 1] = 'u';
+                    buf[i + 2] = IOUtils.DIGITS[(ch >>> 12) & 15];
+                    buf[i + 3] = IOUtils.DIGITS[(ch >>> 8) & 15];
+                    buf[i + 4] = IOUtils.DIGITS[(ch >>> 4) & 15];
+                    buf[i + 5] = IOUtils.DIGITS[ch & 15];
+                    end += 5;
+                }
+            }
+
+            /** 追加引用符号 */
+            if (seperator != 0) {
+                buf[count - 2] = '\"';
+                buf[count - 1] = seperator;
+            } else {
+                buf[count - 1] = '\"';
+            }
+
+            return;
+        }
+
+        int specialCount = 0;
+        int lastSpecialIndex = -1;
+        int firstSpecialIndex = -1;
+        char lastSpecial = '\0';
+
+        for (int i = start; i < end; ++i) {
+            char ch = buf[i];
+
+            if (ch >= ']') { //   93
+                /** 特殊字符参考：http://www.mokuge.com/tool/asciito16/ */
+                if (ch >= 0x7F // 127
+                        && (ch == '\u2028' //
+                        || ch == '\u2029'  //
+                        || ch < 0xA0)) {   // 160 [空格]
+                    if (firstSpecialIndex == -1) {
+                        firstSpecialIndex = i;
+                    }
+
+                    specialCount++;
+                    lastSpecialIndex = i;
+                    lastSpecial = ch;
+                    newcount += 4;
+                }
+                continue;
+            }
+
+            boolean special = (ch < 64 && (sepcialBits & (1L << ch)) != 0) || ch == '\\';
+            if (special) {
+                specialCount++;
+                lastSpecialIndex = i;
+                lastSpecial = ch;
+
+                if (ch == '('
+                        || ch == ')'
+                        || ch == '<'
+                        || ch == '>'
+                        || (ch < IOUtils.specicalFlags_doubleQuotes.length //
+                    && IOUtils.specicalFlags_doubleQuotes[ch] == 4) //
+                ) {
+                    newcount += 4;
+                }
+
+                if (firstSpecialIndex == -1) {
+                    firstSpecialIndex = i;
+                }
+            }
+        }
+
+        if (specialCount > 0) {
+            newcount += specialCount;
+            /** 包含特殊字符并且buffer空间不够，触发扩容 */
+            if (newcount > buf.length) {
+                expandCapacity(newcount);
+            }
+            count = newcount;
+
+            /** 将特殊字符转换成native编码，目的是节省存储空间*/
+            if (specialCount == 1) {
+                // 行分隔符
+                if (lastSpecial == '\u2028') {
+                    int srcPos = lastSpecialIndex + 1;
+                    int destPos = lastSpecialIndex + 6;
+                    int LengthOfCopy = end - lastSpecialIndex - 1;
+                    System.arraycopy(buf, srcPos, buf, destPos, LengthOfCopy);
+                    buf[lastSpecialIndex] = '\\';
+                    buf[++lastSpecialIndex] = 'u';
+                    buf[++lastSpecialIndex] = '2';
+                    buf[++lastSpecialIndex] = '0';
+                    buf[++lastSpecialIndex] = '2';
+                    buf[++lastSpecialIndex] = '8';
+                }
+                // 段落分隔符
+                else if (lastSpecial == '\u2029') {
+                    int srcPos = lastSpecialIndex + 1;
+                    int destPos = lastSpecialIndex + 6;
+                    int LengthOfCopy = end - lastSpecialIndex - 1;
+                    System.arraycopy(buf, srcPos, buf, destPos, LengthOfCopy);
+                    buf[lastSpecialIndex] = '\\';
+                    buf[++lastSpecialIndex] = 'u';
+                    buf[++lastSpecialIndex] = '2';
+                    buf[++lastSpecialIndex] = '0';
+                    buf[++lastSpecialIndex] = '2';
+                    buf[++lastSpecialIndex] = '9';
+                } else if (lastSpecial == '(' || lastSpecial == ')' || lastSpecial == '<' || lastSpecial == '>') {
+                    int srcPos = lastSpecialIndex + 1;
+                    int destPos = lastSpecialIndex + 6;
+                    int LengthOfCopy = end - lastSpecialIndex - 1;
+                    System.arraycopy(buf, srcPos, buf, destPos, LengthOfCopy);
+                    buf[lastSpecialIndex] = '\\';
+                    buf[++lastSpecialIndex] = 'u';
+
+                    final char ch = lastSpecial;
+                    buf[++lastSpecialIndex] = IOUtils.DIGITS[(ch >>> 12) & 15];
+                    buf[++lastSpecialIndex] = IOUtils.DIGITS[(ch >>> 8) & 15];
+                    buf[++lastSpecialIndex] = IOUtils.DIGITS[(ch >>> 4) & 15];
+                    buf[++lastSpecialIndex] = IOUtils.DIGITS[ch & 15];
+                } else {
+                    final char ch = lastSpecial;
+                    if (ch < IOUtils.specicalFlags_doubleQuotes.length //
+                        && IOUtils.specicalFlags_doubleQuotes[ch] == 4) {
+                        int srcPos = lastSpecialIndex + 1;
+                        int destPos = lastSpecialIndex + 6;
+                        int LengthOfCopy = end - lastSpecialIndex - 1;
+                        System.arraycopy(buf, srcPos, buf, destPos, LengthOfCopy);
+
+                        int bufIndex = lastSpecialIndex;
+                        buf[bufIndex++] = '\\';
+                        buf[bufIndex++] = 'u';
+                        buf[bufIndex++] = IOUtils.DIGITS[(ch >>> 12) & 15];
+                        buf[bufIndex++] = IOUtils.DIGITS[(ch >>> 8) & 15];
+                        buf[bufIndex++] = IOUtils.DIGITS[(ch >>> 4) & 15];
+                        buf[bufIndex++] = IOUtils.DIGITS[ch & 15];
+                    } else {
+                        int srcPos = lastSpecialIndex + 1;
+                        int destPos = lastSpecialIndex + 2;
+                        int LengthOfCopy = end - lastSpecialIndex - 1;
+                        System.arraycopy(buf, srcPos, buf, destPos, LengthOfCopy);
+                        buf[lastSpecialIndex] = '\\';
+                        buf[++lastSpecialIndex] = replaceChars[(int) ch];
+                    }
+                }
+            } else if (specialCount > 1) {
+                int textIndex = firstSpecialIndex - start;
+                int bufIndex = firstSpecialIndex;
+                for (int i = textIndex; i < text.length(); ++i) {
+                    char ch = text.charAt(i);
+
+                    /** 将特殊字符转换成native编码，目的是节省存储空间*/ 
+                    if (browserSecure && (ch == '('
+                            || ch == ')'
+                            || ch == '<'
+                            || ch == '>')) {
+                        buf[bufIndex++] = '\\';
+                        buf[bufIndex++] = 'u';
+                        buf[bufIndex++] = IOUtils.DIGITS[(ch >>> 12) & 15];
+                        buf[bufIndex++] = IOUtils.DIGITS[(ch >>> 8) & 15];
+                        buf[bufIndex++] = IOUtils.DIGITS[(ch >>> 4) & 15];
+                        buf[bufIndex++] = IOUtils.DIGITS[ch & 15];
+                        end += 5;
+                    } else if (ch < IOUtils.specicalFlags_doubleQuotes.length //
+                        && IOUtils.specicalFlags_doubleQuotes[ch] != 0 //
+                        || (ch == '/' && isEnabled(SerializerFeature.WriteSlashAsSpecial))) {
+                        buf[bufIndex++] = '\\';
+                        if (IOUtils.specicalFlags_doubleQuotes[ch] == 4) {
+                            buf[bufIndex++] = 'u';
+                            buf[bufIndex++] = IOUtils.DIGITS[(ch >>> 12) & 15];
+                            buf[bufIndex++] = IOUtils.DIGITS[(ch >>> 8) & 15];
+                            buf[bufIndex++] = IOUtils.DIGITS[(ch >>> 4) & 15];
+                            buf[bufIndex++] = IOUtils.DIGITS[ch & 15];
+                            end += 5;
+                        } else {
+                            buf[bufIndex++] = replaceChars[(int) ch];
+                            end++;
+                        }
+                    } else {
+                        // 行分隔符 、段落分隔符
+                        if (ch == '\u2028' || ch == '\u2029') {
+                            buf[bufIndex++] = '\\';
+                            buf[bufIndex++] = 'u';
+                            buf[bufIndex++] = IOUtils.DIGITS[(ch >>> 12) & 15];
+                            buf[bufIndex++] = IOUtils.DIGITS[(ch >>> 8) & 15];
+                            buf[bufIndex++] = IOUtils.DIGITS[(ch >>> 4) & 15];
+                            buf[bufIndex++] = IOUtils.DIGITS[ch & 15];
+                            end += 5;
+                        } else {
+                            buf[bufIndex++] = ch;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (seperator != 0) {
+            buf[count - 2] = '\"';
+            buf[count - 1] = seperator;
+        } else {
+            buf[count - 1] = '\"';
+        }
+    }
+```
