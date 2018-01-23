@@ -513,25 +513,37 @@ public class SerializeConfig {
                 beanInfo.features |= SerializerFeature.WriteClassName.mask;
                 put(clazz, writer = new JavaBeanSerializer(beanInfo));
             } else if (TimeZone.class.isAssignableFrom(clazz) || Map.Entry.class.isAssignableFrom(clazz)) {
+                /** 如果class实现Map.Entry接口或者继承类TimeZone，使用MiscCodecr序列化 */
                 put(clazz, writer = MiscCodec.instance);
             } else if (Appendable.class.isAssignableFrom(clazz)) {
+                /** 如果class实现Appendable接口，使用AppendableSerializer序列化 */
                 put(clazz, writer = AppendableSerializer.instance);
             } else if (Charset.class.isAssignableFrom(clazz)) {
+                /** 如果class继承Charset抽象类，使用ToStringSerializer序列化 */
                 put(clazz, writer = ToStringSerializer.instance);
             } else if (Enumeration.class.isAssignableFrom(clazz)) {
+                /** 如果class实现Enumeration接口，使用EnumerationSerializer序列化 */
                 put(clazz, writer = EnumerationSerializer.instance);
-            } else if (Calendar.class.isAssignableFrom(clazz) //
+            } else if (Calendar.class.isAssignableFrom(clazz)
                     || XMLGregorianCalendar.class.isAssignableFrom(clazz)) {
+                /** 如果class继承类Calendar或者XMLGregorianCalendar，使用CalendarCodec序列化 */
                 put(clazz, writer = CalendarCodec.instance);
             } else if (Clob.class.isAssignableFrom(clazz)) {
+                /** 如果class实现Clob接口，使用ClobSeriliazer序列化 */
                 put(clazz, writer = ClobSeriliazer.instance);
             } else if (TypeUtils.isPath(clazz)) {
+                /** 如果class实现java.nio.file.Path接口，使用ToStringSerializer序列化 */
                 put(clazz, writer = ToStringSerializer.instance);
             } else if (Iterator.class.isAssignableFrom(clazz)) {
+                /** 如果class实现Iterator接口，使用MiscCodec序列化 */
                 put(clazz, writer = MiscCodec.instance);
             } else {
-                if (className.startsWith("java.awt.") //
-                    && AwtCodec.support(clazz) //
+                /**
+                 *  如果class的name是"java.awt."开头 并且
+                 *  继承 Point、Rectangle、Font或者Color 其中之一
+                 */
+                if (className.startsWith("java.awt.")
+                    && AwtCodec.support(clazz)
                 ) {
                     // awt
                     if (!awtError) {
@@ -544,6 +556,7 @@ public class SerializeConfig {
                             };
                             for (String name : names) {
                                 if (name.equals(className)) {
+                                    /** 如果系统支持4中类型， 使用AwtCodec 序列化 */
                                     put(Class.forName(name), writer = AwtCodec.instance);
                                     return writer;
                                 }
@@ -579,6 +592,7 @@ public class SerializeConfig {
                             };
                             for (String name : names) {
                                 if (name.equals(className)) {
+                                    /** 如果系统支持JDK8中日期类型， 使用Jdk8DateCodec 序列化 */
                                     put(Class.forName(name), writer = Jdk8DateCodec.instance);
                                     return writer;
                                 }
@@ -593,6 +607,7 @@ public class SerializeConfig {
                             };
                             for (String name : names) {
                                 if (name.equals(className)) {
+                                    /** 如果系统支持JDK8中可选类型， 使用OptionalCodec 序列化 */
                                     put(Class.forName(name), writer = OptionalCodec.instance);
                                     return writer;
                                 }
@@ -605,6 +620,7 @@ public class SerializeConfig {
                             };
                             for (String name : names) {
                                 if (name.equals(className)) {
+                                    /** 如果系统支持JDK8中原子类型， 使用AdderSerializer 序列化 */
                                     put(Class.forName(name), writer = AdderSerializer.instance);
                                     return writer;
                                 }
@@ -626,6 +642,7 @@ public class SerializeConfig {
 
                         for (String name : names) {
                             if (name.equals(className)) {
+                                /** 如果系统支持oralcle驱动中日期类型， 使用DateCodec 序列化 */
                                 put(Class.forName(name), writer = DateCodec.instance);
                                 return writer;
                             }
@@ -639,7 +656,8 @@ public class SerializeConfig {
                 if ((!springfoxError) //
                     && className.equals("springfox.documentation.spring.web.json.Json")) {
                     try {
-                        put(Class.forName("springfox.documentation.spring.web.json.Json"), //
+                        /** 如果系统支持springfox-spring-web框架中Json类型， 使用SwaggerJsonSerializer 序列化 */
+                        put(Class.forName("springfox.documentation.spring.web.json.Json"),
                                 writer = SwaggerJsonSerializer.instance);
                         return writer;
                     } catch (ClassNotFoundException e) {
@@ -660,6 +678,7 @@ public class SerializeConfig {
 
                         for (String name : names) {
                             if (name.equals(className)) {
+                                /** 如果系统支持guava框架中日期类型， 使用GuavaCodec 序列化 */
                                 put(Class.forName(name), writer = GuavaCodec.instance);
                                 return writer;
                             }
@@ -672,6 +691,7 @@ public class SerializeConfig {
 
                 if ((!jsonnullError) && className.equals("net.sf.json.JSONNull")) {
                     try {
+                        /** 如果系统支持json-lib框架中JSONNull类型， 使用MiscCodec 序列化 */
                         put(Class.forName("net.sf.json.JSONNull"), writer = MiscCodec.instance);
                         return writer;
                     } catch (ClassNotFoundException e) {
@@ -681,18 +701,22 @@ public class SerializeConfig {
                 }
 
                 Class[] interfaces = clazz.getInterfaces();
+                /** 如果class只实现唯一接口，并且接口包含注解，使用AnnotationSerializer 序列化 */
                 if (interfaces.length == 1 && interfaces[0].isAnnotation()) {
                     return AnnotationSerializer.instance;
                 }
 
+                /** 如果使用了cglib或者javassist动态代理 */
                 if (TypeUtils.isProxy(clazz)) {
                     Class<?> superClazz = clazz.getSuperclass();
 
+                    /** 通过父类型查找序列化，父类是真实的类型 */
                     ObjectSerializer superWriter = getObjectWriter(superClazz);
                     put(clazz, superWriter);
                     return superWriter;
                 }
 
+                /** 如果使用了jdk动态代理 */
                 if (Proxy.isProxyClass(clazz)) {
                     Class handlerClass = null;
 
@@ -712,6 +736,7 @@ public class SerializeConfig {
                     }
 
                     if (handlerClass != null) {
+                        /** 根据class实现接口类型查找序列化 */
                         ObjectSerializer superWriter = getObjectWriter(handlerClass);
                         put(clazz, superWriter);
                         return superWriter;
@@ -719,12 +744,14 @@ public class SerializeConfig {
                 }
 
                 if (create) {
+                    /** 没有精确匹配，使用通用JavaBeanSerializer 序列化(假设不启用asm) */
                     writer = createJavaBeanSerializer(clazz);
                     put(clazz, writer);
                 }
             }
 
             if (writer == null) {
+                /** 尝试在已注册缓存找到特定class的序列化实例 */
                 writer = serializers.get(clazz);
             }
         }

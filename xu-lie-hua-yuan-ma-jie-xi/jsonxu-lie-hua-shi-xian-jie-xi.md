@@ -144,5 +144,365 @@ fastjson序列化主要使用入口就是在`JSON.java`类中，它提供非常�
 内部又调用`com.alibaba.fastjson.serializer.SerializeConfig#getObjectWriter(java.lang.Class<?>, boolean)`，这个类实现相对复杂了一些，我会按照代码顺序梳理所有序列化实例的要点 :
 
 ``` java
+	private ObjectSerializer getObjectWriter(Class<?> clazz, boolean create) {
+        /** 首先从内部已经注册查找特定class的序列化实例 */
+        ObjectSerializer writer = serializers.get(clazz);
 
+        if (writer == null) {
+            try {
+                final ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+                /** 使用当前线程类加载器 查找 META-INF/services/AutowiredObjectSerializer.class实现类 */
+                for (Object o : ServiceLoader.load(AutowiredObjectSerializer.class, classLoader)) {
+                    if (!(o instanceof AutowiredObjectSerializer)) {
+                        continue;
+                    }
+
+                    AutowiredObjectSerializer autowired = (AutowiredObjectSerializer) o;
+                    for (Type forType : autowired.getAutowiredFor()) {
+                        /** 如果存在，注册到内部serializers缓存中 */
+                        put(forType, autowired);
+                    }
+                }
+            } catch (ClassCastException ex) {
+                // skip
+            }
+
+            /** 尝试在已注册缓存找到特定class的序列化实例 */
+            writer = serializers.get(clazz);
+        }
+
+        if (writer == null) {
+            /** 使用加载JSON类的加载器 查找 META-INF/services/AutowiredObjectSerializer.class实现类 */
+            final ClassLoader classLoader = JSON.class.getClassLoader();
+            if (classLoader != Thread.currentThread().getContextClassLoader()) {
+                try {
+                    for (Object o : ServiceLoader.load(AutowiredObjectSerializer.class, classLoader)) {
+
+                        if (!(o instanceof AutowiredObjectSerializer)) {
+                            continue;
+                        }
+
+                        AutowiredObjectSerializer autowired = (AutowiredObjectSerializer) o;
+                        for (Type forType : autowired.getAutowiredFor()) {
+                            /** 如果存在，注册到内部serializers缓存中 */
+                            put(forType, autowired);
+                        }
+                    }
+                } catch (ClassCastException ex) {
+                    // skip
+                }
+
+                /** 尝试在已注册缓存找到特定class的序列化实例 */
+                writer = serializers.get(clazz);
+            }
+        }
+        
+        if (writer == null) {
+            String className = clazz.getName();
+            Class<?> superClass;
+
+            if (Map.class.isAssignableFrom(clazz)) {
+                /** 如果class实现类Map接口，使用MapSerializer序列化 */
+                put(clazz, writer = MapSerializer.instance);
+            } else if (List.class.isAssignableFrom(clazz)) {
+                /** 如果class实现类List接口，使用ListSerializer序列化 */
+                put(clazz, writer = ListSerializer.instance);
+            } else if (Collection.class.isAssignableFrom(clazz)) {
+                /** 如果class实现类Collection接口，使用CollectionCodec序列化 */
+                put(clazz, writer = CollectionCodec.instance);
+            } else if (Date.class.isAssignableFrom(clazz)) {
+                /** 如果class继承Date，使用DateCodec序列化 */
+                put(clazz, writer = DateCodec.instance);
+            } else if (JSONAware.class.isAssignableFrom(clazz)) {
+                /** 如果class实现类JSONAware接口，使用JSONAwareSerializer序列化 */
+                put(clazz, writer = JSONAwareSerializer.instance);
+            } else if (JSONSerializable.class.isAssignableFrom(clazz)) {
+                /** 如果class实现类JSONSerializable接口，使用JSONSerializableSerializer序列化 */
+                put(clazz, writer = JSONSerializableSerializer.instance);
+            } else if (JSONStreamAware.class.isAssignableFrom(clazz)) {
+                /** 如果class实现类JSONStreamAware接口，使用MiscCodecr序列化 */
+                put(clazz, writer = MiscCodec.instance);
+            } else if (clazz.isEnum()) {
+                JSONType jsonType = TypeUtils.getAnnotation(clazz, JSONType.class);
+                if (jsonType != null && jsonType.serializeEnumAsJavaBean()) {
+                    /** 如果是枚举类型，并且启用特性 serializeEnumAsJavaBean
+                     *  使用JavaBeanSerializer序列化(假设没有启用asm)
+                     */
+                    put(clazz, writer = createJavaBeanSerializer(clazz));
+                } else {
+                    /** 如果是枚举类型，没有启用特性 serializeEnumAsJavaBean
+                     *  使用EnumSerializer序列化
+                     */
+                    put(clazz, writer = EnumSerializer.instance);
+                }
+            } else if ((superClass = clazz.getSuperclass()) != null && superClass.isEnum()) {
+                JSONType jsonType = TypeUtils.getAnnotation(superClass, JSONType.class);
+                if (jsonType != null && jsonType.serializeEnumAsJavaBean()) {
+                    /** 如果父类是枚举类型，并且启用特性 serializeEnumAsJavaBean
+                     *  使用JavaBeanSerializer序列化(假设没有启用asm)
+                     */
+                    put(clazz, writer = createJavaBeanSerializer(clazz));
+                } else {
+                    /** 如果父类是枚举类型，没有启用特性 serializeEnumAsJavaBean
+                     *  使用EnumSerializer序列化
+                     */
+                    put(clazz, writer = EnumSerializer.instance);
+                }
+            } else if (clazz.isArray()) {
+                Class<?> componentType = clazz.getComponentType();
+                /** 如果是数组类型，根据数组实际类型查找序列化实例 */
+                ObjectSerializer compObjectSerializer = getObjectWriter(componentType);
+                put(clazz, writer = new ArraySerializer(componentType, compObjectSerializer));
+            } else if (Throwable.class.isAssignableFrom(clazz)) {
+                /** 注册通用JavaBeanSerializer序列化处理 Throwable */
+                SerializeBeanInfo beanInfo = TypeUtils.buildBeanInfo(clazz, null, propertyNamingStrategy);
+                beanInfo.features |= SerializerFeature.WriteClassName.mask;
+                put(clazz, writer = new JavaBeanSerializer(beanInfo));
+            } else if (TimeZone.class.isAssignableFrom(clazz) || Map.Entry.class.isAssignableFrom(clazz)) {
+                /** 如果class实现Map.Entry接口或者继承类TimeZone，使用MiscCodecr序列化 */
+                put(clazz, writer = MiscCodec.instance);
+            } else if (Appendable.class.isAssignableFrom(clazz)) {
+                /** 如果class实现Appendable接口，使用AppendableSerializer序列化 */
+                put(clazz, writer = AppendableSerializer.instance);
+            } else if (Charset.class.isAssignableFrom(clazz)) {
+                /** 如果class继承Charset抽象类，使用ToStringSerializer序列化 */
+                put(clazz, writer = ToStringSerializer.instance);
+            } else if (Enumeration.class.isAssignableFrom(clazz)) {
+                /** 如果class实现Enumeration接口，使用EnumerationSerializer序列化 */
+                put(clazz, writer = EnumerationSerializer.instance);
+            } else if (Calendar.class.isAssignableFrom(clazz)
+                    || XMLGregorianCalendar.class.isAssignableFrom(clazz)) {
+                /** 如果class继承类Calendar或者XMLGregorianCalendar，使用CalendarCodec序列化 */
+                put(clazz, writer = CalendarCodec.instance);
+            } else if (Clob.class.isAssignableFrom(clazz)) {
+                /** 如果class实现Clob接口，使用ClobSeriliazer序列化 */
+                put(clazz, writer = ClobSeriliazer.instance);
+            } else if (TypeUtils.isPath(clazz)) {
+                /** 如果class实现java.nio.file.Path接口，使用ToStringSerializer序列化 */
+                put(clazz, writer = ToStringSerializer.instance);
+            } else if (Iterator.class.isAssignableFrom(clazz)) {
+                /** 如果class实现Iterator接口，使用MiscCodec序列化 */
+                put(clazz, writer = MiscCodec.instance);
+            } else {
+                /**
+                 *  如果class的name是"java.awt."开头 并且
+                 *  继承 Point、Rectangle、Font或者Color 其中之一
+                 */
+                if (className.startsWith("java.awt.")
+                    && AwtCodec.support(clazz)
+                ) {
+                    // awt
+                    if (!awtError) {
+                        try {
+                            String[] names = new String[]{
+                                    "java.awt.Color",
+                                    "java.awt.Font",
+                                    "java.awt.Point",
+                                    "java.awt.Rectangle"
+                            };
+                            for (String name : names) {
+                                if (name.equals(className)) {
+                                    /** 如果系统支持4中类型， 使用AwtCodec 序列化 */
+                                    put(Class.forName(name), writer = AwtCodec.instance);
+                                    return writer;
+                                }
+                            }
+                        } catch (Throwable e) {
+                            awtError = true;
+                            // skip
+                        }
+                    }
+                }
+                
+                // jdk8
+                if ((!jdk8Error) //
+                    && (className.startsWith("java.time.") //
+                        || className.startsWith("java.util.Optional") //
+                        || className.equals("java.util.concurrent.atomic.LongAdder")
+                        || className.equals("java.util.concurrent.atomic.DoubleAdder")
+                    )) {
+                    try {
+                        {
+                            String[] names = new String[]{
+                                    "java.time.LocalDateTime",
+                                    "java.time.LocalDate",
+                                    "java.time.LocalTime",
+                                    "java.time.ZonedDateTime",
+                                    "java.time.OffsetDateTime",
+                                    "java.time.OffsetTime",
+                                    "java.time.ZoneOffset",
+                                    "java.time.ZoneRegion",
+                                    "java.time.Period",
+                                    "java.time.Duration",
+                                    "java.time.Instant"
+                            };
+                            for (String name : names) {
+                                if (name.equals(className)) {
+                                    /** 如果系统支持JDK8中日期类型， 使用Jdk8DateCodec 序列化 */
+                                    put(Class.forName(name), writer = Jdk8DateCodec.instance);
+                                    return writer;
+                                }
+                            }
+                        }
+                        {
+                            String[] names = new String[]{
+                                    "java.util.Optional",
+                                    "java.util.OptionalDouble",
+                                    "java.util.OptionalInt",
+                                    "java.util.OptionalLong"
+                            };
+                            for (String name : names) {
+                                if (name.equals(className)) {
+                                    /** 如果系统支持JDK8中可选类型， 使用OptionalCodec 序列化 */
+                                    put(Class.forName(name), writer = OptionalCodec.instance);
+                                    return writer;
+                                }
+                            }
+                        }
+                        {
+                            String[] names = new String[]{
+                                    "java.util.concurrent.atomic.LongAdder",
+                                    "java.util.concurrent.atomic.DoubleAdder"
+                            };
+                            for (String name : names) {
+                                if (name.equals(className)) {
+                                    /** 如果系统支持JDK8中原子类型， 使用AdderSerializer 序列化 */
+                                    put(Class.forName(name), writer = AdderSerializer.instance);
+                                    return writer;
+                                }
+                            }
+                        }
+                    } catch (Throwable e) {
+                        // skip
+                        jdk8Error = true;
+                    }
+                }
+                
+                if ((!oracleJdbcError) //
+                    && className.startsWith("oracle.sql.")) {
+                    try {
+                        String[] names = new String[] {
+                                "oracle.sql.DATE",
+                                "oracle.sql.TIMESTAMP"
+                        };
+
+                        for (String name : names) {
+                            if (name.equals(className)) {
+                                /** 如果系统支持oralcle驱动中日期类型， 使用DateCodec 序列化 */
+                                put(Class.forName(name), writer = DateCodec.instance);
+                                return writer;
+                            }
+                        }
+                    } catch (Throwable e) {
+                        // skip
+                        oracleJdbcError = true;
+                    }
+                }
+                
+                if ((!springfoxError) //
+                    && className.equals("springfox.documentation.spring.web.json.Json")) {
+                    try {
+                        /** 如果系统支持springfox-spring-web框架中Json类型， 使用SwaggerJsonSerializer 序列化 */
+                        put(Class.forName("springfox.documentation.spring.web.json.Json"),
+                                writer = SwaggerJsonSerializer.instance);
+                        return writer;
+                    } catch (ClassNotFoundException e) {
+                        // skip
+                        springfoxError = true;
+                    }
+                }
+
+                if ((!guavaError) //
+                        && className.startsWith("com.google.common.collect.")) {
+                    try {
+                        String[] names = new String[] {
+                                "com.google.common.collect.HashMultimap",
+                                "com.google.common.collect.LinkedListMultimap",
+                                "com.google.common.collect.ArrayListMultimap",
+                                "com.google.common.collect.TreeMultimap"
+                        };
+
+                        for (String name : names) {
+                            if (name.equals(className)) {
+                                /** 如果系统支持guava框架中日期类型， 使用GuavaCodec 序列化 */
+                                put(Class.forName(name), writer = GuavaCodec.instance);
+                                return writer;
+                            }
+                        }
+                    } catch (ClassNotFoundException e) {
+                        // skip
+                        guavaError = true;
+                    }
+                }
+
+                if ((!jsonnullError) && className.equals("net.sf.json.JSONNull")) {
+                    try {
+                        /** 如果系统支持json-lib框架中JSONNull类型， 使用MiscCodec 序列化 */
+                        put(Class.forName("net.sf.json.JSONNull"), writer = MiscCodec.instance);
+                        return writer;
+                    } catch (ClassNotFoundException e) {
+                        // skip
+                        jsonnullError = true;
+                    }
+                }
+
+                Class[] interfaces = clazz.getInterfaces();
+                /** 如果class只实现唯一接口，并且接口包含注解，使用AnnotationSerializer 序列化 */
+                if (interfaces.length == 1 && interfaces[0].isAnnotation()) {
+                    return AnnotationSerializer.instance;
+                }
+
+                /** 如果使用了cglib或者javassist动态代理 */
+                if (TypeUtils.isProxy(clazz)) {
+                    Class<?> superClazz = clazz.getSuperclass();
+
+                    /** 通过父类型查找序列化，父类是真实的类型 */
+                    ObjectSerializer superWriter = getObjectWriter(superClazz);
+                    put(clazz, superWriter);
+                    return superWriter;
+                }
+
+                /** 如果使用了jdk动态代理 */
+                if (Proxy.isProxyClass(clazz)) {
+                    Class handlerClass = null;
+
+                    if (interfaces.length == 2) {
+                        handlerClass = interfaces[1];
+                    } else {
+                        for (Class proxiedInterface : interfaces) {
+                            if (proxiedInterface.getName().startsWith("org.springframework.aop.")) {
+                                continue;
+                            }
+                            if (handlerClass != null) {
+                                handlerClass = null; // multi-matched
+                                break;
+                            }
+                            handlerClass = proxiedInterface;
+                        }
+                    }
+
+                    if (handlerClass != null) {
+                        /** 根据class实现接口类型查找序列化 */
+                        ObjectSerializer superWriter = getObjectWriter(handlerClass);
+                        put(clazz, superWriter);
+                        return superWriter;
+                    }
+                }
+
+                if (create) {
+                    /** 没有精确匹配，使用通用JavaBeanSerializer 序列化(假设不启用asm) */
+                    writer = createJavaBeanSerializer(clazz);
+                    put(clazz, writer);
+                }
+            }
+
+            if (writer == null) {
+                /** 尝试在已注册缓存找到特定class的序列化实例 */
+                writer = serializers.get(clazz);
+            }
+        }
+        return writer;
+    }
 ```
+
+查找具体序列化实例，查找方法基本思想根据class类型或者实现接口类型进行匹配查找。接下来针对逐个序列化实现依次分析。
