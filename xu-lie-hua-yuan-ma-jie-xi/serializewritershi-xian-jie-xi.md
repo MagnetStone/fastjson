@@ -1033,3 +1033,8 @@ writeStringWithSingleQuote这个方法主要做了以下几件事情：
 ```
 
 writeHex 这个序列化方法主要对16进制的自己转换为占用2个ascii码字符，添加单引号和x前缀。
+
+### 序列化byte字节数组
+
+``` java
+```
