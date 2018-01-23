@@ -11,9 +11,9 @@
 * [序列化字段属性键值对](xu-lie-hua-yuan-ma-jie-xi/xu-lie-hua-zi-duan-shu-xing-jian-zhi-dui.md)
 * [json序列化实现解析](xu-lie-hua-yuan-ma-jie-xi/jsonxu-lie-hua-shi-xian-jie-xi.md)
 
-## 反序列化源码解析
-
 ## 词法和语法解析实现
+
+## 反序列化源码解析
 
 ## fastjson设计模式
 
