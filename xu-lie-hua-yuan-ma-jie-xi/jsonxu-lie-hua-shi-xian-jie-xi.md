@@ -26,4 +26,4 @@ fastjson序列化主要使用入口就是在JSON.java类中，它提供非常简
     }
 ```
 
-继续跟踪方法调用到toJSONString(Object ,  SerializeConfig ,SerializeFilter[] , String , int , SerializerFeature... ) : 
+继续跟踪方法调用到`toJSONString(Object ,  SerializeConfig ,SerializeFilter[] , String , int , SerializerFeature... )` : 
