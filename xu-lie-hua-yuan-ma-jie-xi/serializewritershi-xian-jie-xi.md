@@ -858,7 +858,7 @@ com.alibaba.fastjson.serializer.SerializeWriter类非常重要，序列化输出
     }
 ```
 
-writeStringWithDoubleQuote方法实现实在是太长了，这个方法主要做了一下几件事情：
+writeStringWithDoubleQuote方法实现实在是太长了，这个方法主要做了以下几件事情：
 
 1. 如果开启序列化BrowserCompatible特性，执行ascii转换成native编码，节省空间。
 2. 如果输出器writer不为空，会自动触发buffer扩容\(原有容量1.5倍+1\)。
