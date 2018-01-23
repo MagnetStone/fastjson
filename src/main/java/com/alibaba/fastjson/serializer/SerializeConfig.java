@@ -399,11 +399,13 @@ public class SerializeConfig {
     }
 	
 	private ObjectSerializer getObjectWriter(Class<?> clazz, boolean create) {
+        /** 首先从内部已经注册查找特定class的序列化实例 */
         ObjectSerializer writer = serializers.get(clazz);
 
         if (writer == null) {
             try {
                 final ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+                /** 使用当前线程类加载器 查找 META-INF/services/AutowiredObjectSerializer.class实现类 */
                 for (Object o : ServiceLoader.load(AutowiredObjectSerializer.class, classLoader)) {
                     if (!(o instanceof AutowiredObjectSerializer)) {
                         continue;
@@ -411,6 +413,7 @@ public class SerializeConfig {
 
                     AutowiredObjectSerializer autowired = (AutowiredObjectSerializer) o;
                     for (Type forType : autowired.getAutowiredFor()) {
+                        /** 如果存在，注册到内部serializers缓存中 */
                         put(forType, autowired);
                     }
                 }
@@ -418,10 +421,12 @@ public class SerializeConfig {
                 // skip
             }
 
+            /** 尝试在已注册缓存找到特定class的序列化实例 */
             writer = serializers.get(clazz);
         }
 
         if (writer == null) {
+            /** 使用加载JSON类的加载器 查找 META-INF/services/AutowiredObjectSerializer.class实现类 */
             final ClassLoader classLoader = JSON.class.getClassLoader();
             if (classLoader != Thread.currentThread().getContextClassLoader()) {
                 try {
@@ -433,6 +438,7 @@ public class SerializeConfig {
 
                         AutowiredObjectSerializer autowired = (AutowiredObjectSerializer) o;
                         for (Type forType : autowired.getAutowiredFor()) {
+                            /** 如果存在，注册到内部serializers缓存中 */
                             put(forType, autowired);
                         }
                     }
@@ -440,6 +446,7 @@ public class SerializeConfig {
                     // skip
                 }
 
+                /** 尝试在已注册缓存找到特定class的序列化实例 */
                 writer = serializers.get(clazz);
             }
         }
@@ -449,38 +456,59 @@ public class SerializeConfig {
             Class<?> superClass;
 
             if (Map.class.isAssignableFrom(clazz)) {
+                /** 如果class实现类Map接口，使用MapSerializer序列化 */
                 put(clazz, writer = MapSerializer.instance);
             } else if (List.class.isAssignableFrom(clazz)) {
+                /** 如果class实现类List接口，使用ListSerializer序列化 */
                 put(clazz, writer = ListSerializer.instance);
             } else if (Collection.class.isAssignableFrom(clazz)) {
+                /** 如果class实现类Collection接口，使用CollectionCodec序列化 */
                 put(clazz, writer = CollectionCodec.instance);
             } else if (Date.class.isAssignableFrom(clazz)) {
+                /** 如果class继承Date，使用DateCodec序列化 */
                 put(clazz, writer = DateCodec.instance);
             } else if (JSONAware.class.isAssignableFrom(clazz)) {
+                /** 如果class实现类JSONAware接口，使用JSONAwareSerializer序列化 */
                 put(clazz, writer = JSONAwareSerializer.instance);
             } else if (JSONSerializable.class.isAssignableFrom(clazz)) {
+                /** 如果class实现类JSONSerializable接口，使用JSONSerializableSerializer序列化 */
                 put(clazz, writer = JSONSerializableSerializer.instance);
             } else if (JSONStreamAware.class.isAssignableFrom(clazz)) {
+                /** 如果class实现类JSONStreamAware接口，使用MiscCodecr序列化 */
                 put(clazz, writer = MiscCodec.instance);
             } else if (clazz.isEnum()) {
                 JSONType jsonType = TypeUtils.getAnnotation(clazz, JSONType.class);
                 if (jsonType != null && jsonType.serializeEnumAsJavaBean()) {
+                    /** 如果是枚举类型，并且启用特性 serializeEnumAsJavaBean
+                     *  使用JavaBeanSerializer序列化(假设没有启用asm)
+                     */
                     put(clazz, writer = createJavaBeanSerializer(clazz));
                 } else {
+                    /** 如果是枚举类型，没有启用特性 serializeEnumAsJavaBean
+                     *  使用EnumSerializer序列化
+                     */
                     put(clazz, writer = EnumSerializer.instance);
                 }
             } else if ((superClass = clazz.getSuperclass()) != null && superClass.isEnum()) {
                 JSONType jsonType = TypeUtils.getAnnotation(superClass, JSONType.class);
                 if (jsonType != null && jsonType.serializeEnumAsJavaBean()) {
+                    /** 如果父类是枚举类型，并且启用特性 serializeEnumAsJavaBean
+                     *  使用JavaBeanSerializer序列化(假设没有启用asm)
+                     */
                     put(clazz, writer = createJavaBeanSerializer(clazz));
                 } else {
+                    /** 如果父类是枚举类型，没有启用特性 serializeEnumAsJavaBean
+                     *  使用EnumSerializer序列化
+                     */
                     put(clazz, writer = EnumSerializer.instance);
                 }
             } else if (clazz.isArray()) {
                 Class<?> componentType = clazz.getComponentType();
+                /** 如果是数组类型，根据数组实际类型查找序列化实例 */
                 ObjectSerializer compObjectSerializer = getObjectWriter(componentType);
                 put(clazz, writer = new ArraySerializer(componentType, compObjectSerializer));
             } else if (Throwable.class.isAssignableFrom(clazz)) {
+                /** 注册通用JavaBeanSerializer序列化处理 Throwable */
                 SerializeBeanInfo beanInfo = TypeUtils.buildBeanInfo(clazz, null, propertyNamingStrategy);
                 beanInfo.features |= SerializerFeature.WriteClassName.mask;
                 put(clazz, writer = new JavaBeanSerializer(beanInfo));
