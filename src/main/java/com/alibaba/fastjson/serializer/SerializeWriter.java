@@ -1247,6 +1247,9 @@ public final class SerializeWriter extends Writer {
         }
     }
 
+    /**
+     * @see #writeStringWithDoubleQuote(String, char)
+     */
     public void writeStringWithDoubleQuote(char[] text, final char seperator) {
         if (text == null) {
             writeNull();
@@ -2239,6 +2242,7 @@ public final class SerializeWriter extends Writer {
             if (newcount > buf.length) {
                 expandCapacity(newcount);
             }
+            /** 如果字符串为null，输出"null"字符串 */
             "null".getChars(0, 4, buf, count);
             count = newcount;
             return;
@@ -2248,11 +2252,13 @@ public final class SerializeWriter extends Writer {
         int newcount = count + len + 2;
         if (newcount > buf.length) {
             if (writer != null) {
+                /** 使用单引号输出字符串值 */
                 write('\'');
                 for (int i = 0; i < text.length(); ++i) {
                     char ch = text.charAt(i);
                     if (ch <= 13 || ch == '\\' || ch == '\'' //
                         || (ch == '/' && isEnabled(SerializerFeature.WriteSlashAsSpecial))) {
+                        /** 如果包含特殊字符 或者 单字符'\' ''' ，添加转译并且替换为普通字符*/
                         write('\\');
                         write(replaceChars[(int) ch]);
                     } else {
@@ -2262,6 +2268,7 @@ public final class SerializeWriter extends Writer {
                 write('\'');
                 return;
             }
+            /** buffer容量不够并且输出器为空，触发扩容 */
             expandCapacity(newcount);
         }
 
@@ -2269,6 +2276,7 @@ public final class SerializeWriter extends Writer {
         int end = start + len;
 
         buf[count] = '\'';
+        /** buffer能够容纳字符串，直接拷贝text到buf缓冲数组 */
         text.getChars(0, len, buf, start);
         count = newcount;
 
@@ -2279,6 +2287,7 @@ public final class SerializeWriter extends Writer {
             char ch = buf[i];
             if (ch <= 13 || ch == '\\' || ch == '\'' //
                 || (ch == '/' && isEnabled(SerializerFeature.WriteSlashAsSpecial))) {
+                /** 记录特殊字符个数和最后一个特殊字符索引 */
                 specialCount++;
                 lastSpecialIndex = i;
                 lastSpecial = ch;
@@ -2292,6 +2301,7 @@ public final class SerializeWriter extends Writer {
         count = newcount;
 
         if (specialCount == 1) {
+            /** 将字符后移一位，插入转译字符\ 并替换特殊字符为普通字符*/
             System.arraycopy(buf, lastSpecialIndex + 1, buf, lastSpecialIndex + 2, end - lastSpecialIndex - 1);
             buf[lastSpecialIndex] = '\\';
             buf[++lastSpecialIndex] = replaceChars[(int) lastSpecial];
@@ -2305,6 +2315,7 @@ public final class SerializeWriter extends Writer {
 
                 if (ch <= 13 || ch == '\\' || ch == '\'' //
                     || (ch == '/' && isEnabled(SerializerFeature.WriteSlashAsSpecial))) {
+                    /** 将字符后移一位，插入转译字符\ 并替换特殊字符为普通字符*/
                     System.arraycopy(buf, i + 1, buf, i + 2, end - i - 1);
                     buf[i] = '\\';
                     buf[i + 1] = replaceChars[(int) ch];
@@ -2313,9 +2324,14 @@ public final class SerializeWriter extends Writer {
             }
         }
 
+        /** 字符串结尾添加单引号引用 */
         buf[count - 1] = '\'';
     }
 
+    /**
+     * @see #writeStringWithSingleQuote(String) {
+
+     */
     protected void writeStringWithSingleQuote(char[] chars) {
         if (chars == null) {
             int newcount = count + 4;

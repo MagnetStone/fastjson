@@ -443,7 +443,7 @@ com.alibaba.fastjson.serializer.SerializeWriter类非常重要，序列化输出
 
 序列化字符串会转化成\[“element”, "element", ...\]格式。如果列表字符串中包含特殊字符，调用特化版本writeStringWithDoubleQuote\(text, \(char\) 0\)。
 
-### 序列化包含特殊字符字符串
+### 序列化包含特殊字符字符串
 
 ```java
     public void writeStringWithDoubleQuote(String text, final char seperator) {
@@ -865,4 +865,106 @@ writeStringWithDoubleQuote方法实现实在是太长了，这个方法主要做
 
 另外一个针对特殊字符的字符串序列化方法writeStringWithDoubleQuote(char[] text, final char seperator)，因为和writeStringWithDoubleQuote(String text, final char seperator)版本极其类似，所以不再冗余分析。
 
+序列化字符串的方法包括添加单引号的版本，详细请参考 writeStringWithSingleQuote ：
+
+``` java
+    protected void writeStringWithSingleQuote(String text) {
+        if (text == null) {
+            int newcount = count + 4;
+            if (newcount > buf.length) {
+                expandCapacity(newcount);
+            }
+            /** 如果字符串为null，输出"null"字符串 */
+            "null".getChars(0, 4, buf, count);
+            count = newcount;
+            return;
+        }
+
+        int len = text.length();
+        int newcount = count + len + 2;
+        if (newcount > buf.length) {
+            if (writer != null) {
+                /** 使用单引号输出字符串值 */
+                write('\'');
+                for (int i = 0; i < text.length(); ++i) {
+                    char ch = text.charAt(i);
+                    if (ch <= 13 || ch == '\\' || ch == '\'' //
+                        || (ch == '/' && isEnabled(SerializerFeature.WriteSlashAsSpecial))) {
+                        /** 如果包含特殊字符 或者 单字符'\' ''' ，添加转译并且替换为普通字符*/
+                        write('\\');
+                        write(replaceChars[(int) ch]);
+                    } else {
+                        write(ch);
+                    }
+                }
+                write('\'');
+                return;
+            }
+            /** buffer容量不够并且输出器为空，触发扩容 */
+            expandCapacity(newcount);
+        }
+
+        int start = count + 1;
+        int end = start + len;
+
+        buf[count] = '\'';
+        /** buffer能够容纳字符串，直接拷贝text到buf缓冲数组 */
+        text.getChars(0, len, buf, start);
+        count = newcount;
+
+        int specialCount = 0;
+        int lastSpecialIndex = -1;
+        char lastSpecial = '\0';
+        for (int i = start; i < end; ++i) {
+            char ch = buf[i];
+            if (ch <= 13 || ch == '\\' || ch == '\'' //
+                || (ch == '/' && isEnabled(SerializerFeature.WriteSlashAsSpecial))) {
+                /** 记录特殊字符个数和最后一个特殊字符索引 */
+                specialCount++;
+                lastSpecialIndex = i;
+                lastSpecial = ch;
+            }
+        }
+
+        newcount += specialCount;
+        if (newcount > buf.length) {
+            expandCapacity(newcount);
+        }
+        count = newcount;
+
+        if (specialCount == 1) {
+            /** 将字符后移一位，插入转译字符\ 并替换特殊字符为普通字符*/
+            System.arraycopy(buf, lastSpecialIndex + 1, buf, lastSpecialIndex + 2, end - lastSpecialIndex - 1);
+            buf[lastSpecialIndex] = '\\';
+            buf[++lastSpecialIndex] = replaceChars[(int) lastSpecial];
+        } else if (specialCount > 1) {
+            System.arraycopy(buf, lastSpecialIndex + 1, buf, lastSpecialIndex + 2, end - lastSpecialIndex - 1);
+            buf[lastSpecialIndex] = '\\';
+            buf[++lastSpecialIndex] = replaceChars[(int) lastSpecial];
+            end++;
+            for (int i = lastSpecialIndex - 2; i >= start; --i) {
+                char ch = buf[i];
+
+                if (ch <= 13 || ch == '\\' || ch == '\'' //
+                    || (ch == '/' && isEnabled(SerializerFeature.WriteSlashAsSpecial))) {
+                    /** 将字符后移一位，插入转译字符\ 并替换特殊字符为普通字符*/
+                    System.arraycopy(buf, i + 1, buf, i + 2, end - i - 1);
+                    buf[i] = '\\';
+                    buf[i + 1] = replaceChars[(int) ch];
+                    end++;
+                }
+            }
+        }
+
+        /** 字符串结尾添加单引号引用 */
+        buf[count - 1] = '\'';
+    }
+```
+
+writeStringWithSingleQuote这个方法主要做了以下几件事情：
+
+1. 针对特殊字符，添加转译字符并且替换特殊字符为普通字符
+2. 如果输出器writer不为空，会自动触发buffer扩容\(原有容量1.5倍+1\)。
+
+另外一个针对特殊字符的字符串序列化方法writeStringWithSingleQuote(char[])，因为和writeStringWithSingleQuote(String)版本极其类似，所以不再冗余分析。
 
