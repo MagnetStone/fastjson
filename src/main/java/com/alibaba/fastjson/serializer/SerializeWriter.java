@@ -2467,6 +2467,7 @@ public final class SerializeWriter extends Writer {
 
     public void writeFieldName(String key, boolean checkSpecial) {
         if (key == null) {
+            /** 如果字段key为null， 输出 "null:" */
             write("null:");
             return;
         }
