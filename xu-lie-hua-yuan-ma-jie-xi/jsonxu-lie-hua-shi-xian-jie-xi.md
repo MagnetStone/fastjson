@@ -133,7 +133,7 @@ fastjson序列化主要使用入口就是在`JSON.java`类中，它提供非常�
     }
 ```
 
-我们发现在方法内部调用`getObjectWriter(clazz)`根据具体类型查找序列化实例，方法内部只有一行调用 `config.getObjectWriter(clazz)`，让我们更进一步查看委托实现细节(`com.alibaba.fastjson.serializer.SerializeConfig#getObjectWriter(java.lang.Class<?>)`) :
+我们发现在方法内部调用`getObjectWriter(clazz)`根据具体类型查找序列化实例，方法内部只有一行调用 `config.getObjectWriter(clazz)`，让我们更进一步查看委托实现细节`com.alibaba.fastjson.serializer.SerializeConfig#getObjectWriter(java.lang.Class<?>)`:
 
 ``` java
     public ObjectSerializer getObjectWriter(Class<?> clazz) {
