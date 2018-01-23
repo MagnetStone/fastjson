@@ -271,17 +271,27 @@ public final class SerializeWriter extends Writer {
             return;
         }
 
+        /** 计算总共字符串长度 */
         int newcount = count + len;
+        /** 如果当前存储空间不够 */
         if (newcount > buf.length) {
             if (writer == null) {
                 expandCapacity(newcount);
             } else {
+                /**
+                 * 如果字符数组c超过缓冲区大小, 进行循环拷贝
+                 */
                 do {
+                    /** 计算当前buffer剩余容纳字符数 */
                     int rest = buf.length - count;
+                    /** c[off, off + rest) 拷贝到buf[count, ...]中*/
                     System.arraycopy(c, off, buf, count, rest);
                     count = buf.length;
+                    /** 强制刷新输出流，会重置count = 0 */
                     flush();
+                    /** 计算剩余需要拷贝的字符数量 */
                     len -= rest;
+                    /** 剩余要拷贝字符在c中偏移量(索引) */
                     off += rest;
                 } while (len > buf.length);
                 newcount = len;
