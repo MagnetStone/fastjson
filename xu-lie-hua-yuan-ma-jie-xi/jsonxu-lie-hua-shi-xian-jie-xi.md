@@ -141,7 +141,7 @@ fastjson序列化主要使用入口就是在`JSON.java`类中，它提供非常�
     }
 ```
 
-内部由调用`com.alibaba.fastjson.serializer.SerializeConfig#getObjectWriter(java.lang.Class<?>, boolean)` :
+内部又调用`com.alibaba.fastjson.serializer.SerializeConfig#getObjectWriter(java.lang.Class<?>, boolean)` :
 
 ``` java
 
