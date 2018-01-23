@@ -299,7 +299,6 @@ public final class SerializeWriter extends Writer {
         }
         System.arraycopy(c, off, buf, count, len);
         count = newcount;
-
     }
 
     public void expandCapacity(int minimumCapacity) {
