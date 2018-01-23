@@ -2514,6 +2514,7 @@ public final class SerializeWriter extends Writer {
         if (newcount > buf.length) {
             if (writer != null) {
                 if (len == 0) {
+                    /** 如果字段为null， 输出空白字符('':)作为key */
                     write('\'');
                     write('\'');
                     write(':');
@@ -2529,25 +2530,29 @@ public final class SerializeWriter extends Writer {
                     }
                 }
 
+                /** 如果有特殊字符，给字段key添加单引号 */
                 if (hasSpecial) {
                     write('\'');
                 }
                 for (int i = 0; i < len; ++i) {
                     char ch = text.charAt(i);
                     if (ch < specicalFlags_singleQuotes.length && specicalFlags_singleQuotes[ch] != 0) {
+                        /** 如果输出key中包含特殊字符，添加转译字符并将特殊字符替换成普通字符 */
                         write('\\');
                         write(replaceChars[(int) ch]);
                     } else {
                         write(ch);
                     }
                 }
+
+                /** 如果有特殊字符，给字段key添加单引号 */
                 if (hasSpecial) {
                     write('\'');
                 }
                 write(':');
                 return;
             }
-
+            /** 输出器writer为null触发扩容，扩容到为原有buf容量1.5倍+1, copy原有buf的字符*/
             expandCapacity(newcount);
         }
 
@@ -2565,6 +2570,7 @@ public final class SerializeWriter extends Writer {
         int start = count;
         int end = start + len;
 
+        /** buffer能够容纳字符串，直接拷贝text到buf缓冲数组 */
         text.getChars(0, len, buf, start);
         count = newcount;
 
@@ -2580,7 +2586,9 @@ public final class SerializeWriter extends Writer {
                     }
                     count = newcount;
 
+                    /** 将字符后移两位，插入字符'\ 并替换特殊字符为普通字符 */
                     System.arraycopy(buf, i + 1, buf, i + 3, end - i - 1);
+                    /** 将字符后移一位 */
                     System.arraycopy(buf, 0, buf, 1, i);
                     buf[start] = '\'';
                     buf[++i] = '\\';
@@ -2596,6 +2604,7 @@ public final class SerializeWriter extends Writer {
                     }
                     count = newcount;
 
+                    /** 包含特殊字符，将字符后移一位，插入转译字符\ 并替换特殊字符为普通字符 */
                     System.arraycopy(buf, i + 1, buf, i + 2, end - i);
                     buf[i] = '\\';
                     buf[++i] = replaceChars[(int) ch];
