@@ -1154,3 +1154,168 @@ writeStringWithSingleQuote这个方法主要做了以下几件事情：
 2. 如果输出器writer不为空，会自动触发buffer扩容\(原有容量1.5倍+1\)。
 
 另外一个针对特殊字符的字符串序列化方法writeStringWithSingleQuote(char[])，因为和writeStringWithSingleQuote(String)版本极其类似，所以不再冗余分析。
+
+### 序列化字段名称
+
+```java
+    public void writeFieldName(String key, boolean checkSpecial) {
+        if (key == null) {
+            /** 如果字段key为null， 输出 "null:" */
+            write("null:");
+            return;
+        }
+
+        if (useSingleQuotes) {
+            if (quoteFieldNames) {
+                /** 使用单引号并且在字段后面加'：'输出 标准的json key*/
+                writeStringWithSingleQuote(key);
+                write(':');
+            } else {
+                /** 输出key，如果有特殊字符会自动添加单引号 */
+                writeKeyWithSingleQuoteIfHasSpecial(key);
+            }
+        } else {
+            if (quoteFieldNames) {
+                /** 使用双引号输出json key 并添加 ： */
+                writeStringWithDoubleQuote(key, ':');
+            } else {
+                boolean hashSpecial = key.length() == 0;
+                for (int i = 0; i < key.length(); ++i) {
+                    char ch = key.charAt(i);
+                    boolean special = (ch < 64 && (sepcialBits & (1L << ch)) != 0) || ch == '\\';
+                    if (special) {
+                        hashSpecial = true;
+                        break;
+                    }
+                }
+                if (hashSpecial) {
+                    /** 如果包含特殊字符，会进行特殊字符转换输出，eg: 使用转换后的native编码输出 */
+                    writeStringWithDoubleQuote(key, ':');
+                } else {
+                    /** 输出字段不加引号 */
+                    write(key);
+                    write(':');
+                }
+            }
+        }
+    }
+```
+
+序列化字段名称方法writeFieldName主要的任务：
+
+1. 完成字段特殊字符的转译
+2. 添加字段的引号
+
+处理输出key的特殊字符方法writeStringWithDoubleQuote前面已经分析过了，序列化字段名称是否需要添加引号和特殊字符处理参考writeKeyWithSingleQuoteIfHasSpecial：
+
+``` java
+    private void writeKeyWithSingleQuoteIfHasSpecial(String text) {
+        final byte[] specicalFlags_singleQuotes = IOUtils.specicalFlags_singleQuotes;
+
+        int len = text.length();
+        int newcount = count + len + 1;
+        if (newcount > buf.length) {
+            if (writer != null) {
+                if (len == 0) {
+                    /** 如果字段为null， 输出空白字符('':)作为key */
+                    write('\'');
+                    write('\'');
+                    write(':');
+                    return;
+                }
+
+                boolean hasSpecial = false;
+                for (int i = 0; i < len; ++i) {
+                    char ch = text.charAt(i);
+                    if (ch < specicalFlags_singleQuotes.length && specicalFlags_singleQuotes[ch] != 0) {
+                        hasSpecial = true;
+                        break;
+                    }
+                }
+
+                /** 如果有特殊字符，给字段key添加单引号 */
+                if (hasSpecial) {
+                    write('\'');
+                }
+                for (int i = 0; i < len; ++i) {
+                    char ch = text.charAt(i);
+                    if (ch < specicalFlags_singleQuotes.length && specicalFlags_singleQuotes[ch] != 0) {
+                        /** 如果输出key中包含特殊字符，添加转译字符并将特殊字符替换成普通字符 */
+                        write('\\');
+                        write(replaceChars[(int) ch]);
+                    } else {
+                        write(ch);
+                    }
+                }
+
+                /** 如果有特殊字符，给字段key添加单引号 */
+                if (hasSpecial) {
+                    write('\'');
+                }
+                write(':');
+                return;
+            }
+            /** 输出器writer为null触发扩容，扩容到为原有buf容量1.5倍+1, copy原有buf的字符*/
+            expandCapacity(newcount);
+        }
+
+        if (len == 0) {
+            int newCount = count + 3;
+            if (newCount > buf.length) {
+                expandCapacity(count + 3);
+            }
+            buf[count++] = '\'';
+            buf[count++] = '\'';
+            buf[count++] = ':';
+            return;
+        }
+
+        int start = count;
+        int end = start + len;
+
+        /** buffer能够容纳字符串，直接拷贝text到buf缓冲数组 */
+        text.getChars(0, len, buf, start);
+        count = newcount;
+
+        boolean hasSpecial = false;
+
+        for (int i = start; i < end; ++i) {
+            char ch = buf[i];
+            if (ch < specicalFlags_singleQuotes.length && specicalFlags_singleQuotes[ch] != 0) {
+                if (!hasSpecial) {
+                    newcount += 3;
+                    if (newcount > buf.length) {
+                        expandCapacity(newcount);
+                    }
+                    count = newcount;
+
+                    /** 将字符后移两位，插入字符'\ 并替换特殊字符为普通字符 */
+                    System.arraycopy(buf, i + 1, buf, i + 3, end - i - 1);
+                    /** 将字符后移一位 */
+                    System.arraycopy(buf, 0, buf, 1, i);
+                    buf[start] = '\'';
+                    buf[++i] = '\\';
+                    buf[++i] = replaceChars[(int) ch];
+                    end += 2;
+                    buf[count - 2] = '\'';
+
+                    hasSpecial = true;
+                } else {
+                    newcount++;
+                    if (newcount > buf.length) {
+                        expandCapacity(newcount);
+                    }
+                    count = newcount;
+
+                    /** 包含特殊字符，将字符后移一位，插入转译字符\ 并替换特殊字符为普通字符 */
+                    System.arraycopy(buf, i + 1, buf, i + 2, end - i);
+                    buf[i] = '\\';
+                    buf[++i] = replaceChars[(int) ch];
+                    end++;
+                }
+            }
+        }
+
+        buf[newcount - 1] = ':';
+    }
+```

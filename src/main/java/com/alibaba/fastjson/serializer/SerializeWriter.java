@@ -2478,6 +2478,7 @@ public final class SerializeWriter extends Writer {
                 writeStringWithSingleQuote(key);
                 write(':');
             } else {
+                /** 输出key，如果有特殊字符会自动添加单引号 */
                 writeKeyWithSingleQuoteIfHasSpecial(key);
             }
         } else {
