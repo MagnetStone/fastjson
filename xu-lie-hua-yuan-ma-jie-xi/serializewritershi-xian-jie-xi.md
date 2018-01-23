@@ -862,7 +862,7 @@ writeStringWithDoubleQuote方法实现实在是太长了，这个方法主要做
 
 1. 如果开启序列化BrowserCompatible特性，执行ascii转换成native编码，节省空间。
 2. 如果输出器writer不为空，会自动触发buffer扩容\(原有容量1.5倍+1\)。
-3. 
+
 另外一个针对特殊字符的字符串序列化方法writeStringWithDoubleQuote(char[] text, final char seperator)，因为和writeStringWithDoubleQuote(String text, final char seperator)版本极其类似，所以不再冗余分析。
 
 
