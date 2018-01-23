@@ -1037,4 +1037,118 @@ writeHex 这个序列化方法主要对16进制的自己转换为占用2个ascii
 ### 序列化byte字节数组
 
 ``` java
+   public void writeByteArray(byte[] bytes) {
+        if (isEnabled(SerializerFeature.WriteClassName.mask)) {
+            /** 如果开启序列化特性WriteClassName，直接写16进制字符 */
+            writeHex(bytes);
+            return;
+        }
+
+        int bytesLen = bytes.length;
+        final char quote = useSingleQuotes ? '\'' : '"';
+        if (bytesLen == 0) {
+            String emptyString = useSingleQuotes ? "''" : "\"\"";
+            /** 如果字节数组长度为0，输出空白字符 */
+            write(emptyString);
+            return;
+        }
+
+        final char[] CA = IOUtils.CA;
+
+        /** 验证长度是24bit位整数倍 */
+        int eLen = (bytesLen / 3) * 3;
+        /** base64 编码字符长度
+         *
+         *  base64 :
+         *  第一步，将每三个字节作为一组，一共是24个二进制位。
+         *  第二步，将这24个二进制位分为四组，每个组有6个二进制位。
+         *  第三步，在每组前面加两个00，扩展成32个二进制位，即四个字节。
+         *  第四步，根据下表，得到扩展后的每个字节的对应符号，这就是Base64的编码值。
+         *
+         *  ref: http://www.ruanyifeng.com/blog/2008/06/base64.html
+         */
+        int charsLen = ((bytesLen - 1) / 3 + 1) << 2;
+        // char[] chars = new char[charsLen];
+        int offset = count;
+        int newcount = count + charsLen + 2;
+        if (newcount > buf.length) {
+            if (writer != null) {
+                write(quote);
+
+                for (int s = 0; s < eLen;) {
+                    /** 三个字节为一组, 扩展为四个字节 */
+                    int i = (bytes[s++] & 0xff) << 16 | (bytes[s++] & 0xff) << 8 | (bytes[s++] & 0xff);
+
+                    write(CA[(i >>> 18) & 0x3f]);
+                    write(CA[(i >>> 12) & 0x3f]);
+                    write(CA[(i >>> 6) & 0x3f]);
+                    /** 填充00 */
+                    write(CA[i & 0x3f]);
+                }
+
+                /** 对齐并编码剩余不足3个字节为一组的数据 */
+                // Pad and encode last bits if source isn't even 24 bits.
+                int left = bytesLen - eLen; // 0 - 2.
+                if (left > 0) {
+
+                    /**
+                     * a) 1个字节的情况：
+                     * 将这1字节8位二进制，每6位分成2组，最后一组除了前面加00，后面加上0000，
+                     * 这样得到 两位的Base64编码， 在末尾补上2个"="号
+                     *
+                     * b) 2个字节的情况：
+                     * 将这2字节的一共16个二进制位，每6位分成3组，最后一组除了前面加00，后面也要加00，
+                     * 这样得到 3位的Base64编码， 在末尾补上"="号
+                     *
+                     *
+                     * 如果只有1个字节，按照前面规则a)
+                     * 第1组是6位，第2组后面4个0， 因此应该左移 10 = 6 + 4
+                     *
+                     * 如果只有2个字节，按照前面规则b)
+                     * 第1个字节左移 10 位 加上 第2个字节左移 2 位补0即可
+                     */
+                    int i = ((bytes[eLen] & 0xff) << 10) | (left == 2 ? ((bytes[bytesLen - 1] & 0xff) << 2) : 0);
+
+                    /** 扩展为四个字节 */
+                    write(CA[i >> 12]);
+                    write(CA[(i >>> 6) & 0x3f]);
+                    write(left == 2 ? CA[i & 0x3f] : '=');
+                    write('=');
+                }
+
+                write(quote);
+                return;
+            }
+            expandCapacity(newcount);
+        }
+        count = newcount;
+        buf[offset++] = quote;
+
+        // Encode even 24-bits
+        for (int s = 0, d = offset; s < eLen;) {
+            /** 三个字节为一组, 扩展为四个字节 */
+            int i = (bytes[s++] & 0xff) << 16 | (bytes[s++] & 0xff) << 8 | (bytes[s++] & 0xff);
+
+            // Encode the int into four chars
+            buf[d++] = CA[(i >>> 18) & 0x3f];
+            buf[d++] = CA[(i >>> 12) & 0x3f];
+            buf[d++] = CA[(i >>> 6) & 0x3f];
+            /** 填充00 */
+            buf[d++] = CA[i & 0x3f];
+        }
+
+        /** 对齐并编码剩余不足3个字节为一组的数据 */
+        int left = bytesLen - eLen; // 0 - 2.
+        if (left > 0) {
+            // Prepare the int
+            int i = ((bytes[eLen] & 0xff) << 10) | (left == 2 ? ((bytes[bytesLen - 1] & 0xff) << 2) : 0);
+
+            /** 扩展为四个字节 */
+            buf[newcount - 5] = CA[i >> 12];
+            buf[newcount - 4] = CA[(i >>> 6) & 0x3f];
+            buf[newcount - 3] = left == 2 ? CA[i & 0x3f] : '=';
+            buf[newcount - 2] = '=';
+        }
+        buf[newcount - 1] = quote;
+    }
 ```
