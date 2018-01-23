@@ -1785,14 +1785,17 @@ public final class SerializeWriter extends Writer {
 
     public void writeFieldValue(char seperator, String name, boolean value) {
         if (!quoteFieldNames) {
+            /** 如果不需要输出双引号，则一次输出字段分隔符，字段名字，字段值 */
             write(seperator);
             writeFieldName(name);
             write(value);
             return;
         }
+        /** true 占用4位， false 占用5位 */
         int intSize = value ? 4 : 5;
 
         int nameLen = name.length();
+        /** 输出总长度， 中间的4  代表 key 和 value 总共占用4个引号 */
         int newcount = count + nameLen + 4 + intSize;
         if (newcount > buf.length) {
             if (writer != null) {
