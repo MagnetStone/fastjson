@@ -17,3 +17,11 @@ fastjson序列化主要使用入口就是在JSON.java类中，它提供非常简
         return toJSONString(object, emptyFilters);
     }
 ```
+
+使用便捷接口toJSONString方法，可以将任意java对象序列化为json字符串，内部调用toJSONString(Object , SerializeFilter[] , SerializerFeature... ) ：
+
+``` java
+    public static String toJSONString(Object object, SerializeFilter[] filters, SerializerFeature... features) {
+        return toJSONString(object, SerializeConfig.globalInstance, filters, null, DEFAULT_GENERATE_FEATURE, features);
+    }
+```
