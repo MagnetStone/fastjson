@@ -264,14 +264,17 @@ public class JSONSerializer extends SerializeFilterable {
 
     public final void write(Object object) {
         if (object == null) {
+            /** 如果对象为空，直接输出 "null" 字符串 */
             out.writeNull();
             return;
         }
 
         Class<?> clazz = object.getClass();
+        /** 根据对象的Class类型查找具体序列化实例 */
         ObjectSerializer writer = getObjectWriter(clazz);
 
         try {
+            /** 使用具体serializer实例处理对象 */
             writer.write(this, object, null, null, 0);
         } catch (IOException e) {
             throw new JSONException(e.getMessage(), e);

@@ -657,12 +657,12 @@ public abstract class JSON implements JSONStreamAware, JSONAware {
      * @since 1.2.9
      * @return
      */
-    public static String toJSONString(Object object,                    // 序列化对象
-                                      SerializeConfig config,           // 全局序列化配置
-                                      SerializeFilter[] filters,        // 序列化拦截器
-                                      String dateFormat,                // 序列化日期格式
-                                      int defaultFeatures,              // 默认序列化特性
-                                      SerializerFeature... features) {  // 自定义序列化特性
+    public static String toJSONString(Object object,                   /** 序列化对象    */
+                                      SerializeConfig config,          /** 全局序列化配置 */
+                                      SerializeFilter[] filters,       /** 序列化拦截器   */
+                                      String dateFormat,               /** 序列化日期格式 */
+                                      int defaultFeatures,             /** 默认序列化特性 */
+                                      SerializerFeature... features) { /** 自定义序列化特性 */
         /** 初始化序列化writer，用features覆盖defaultFeatures配置 */
         SerializeWriter out = new SerializeWriter(null, defaultFeatures, features);
 

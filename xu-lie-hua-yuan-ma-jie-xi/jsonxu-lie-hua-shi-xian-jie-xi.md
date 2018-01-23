@@ -29,12 +29,12 @@ fastjson序列化主要使用入口就是在`JSON.java`类中，它提供非常�
 继续跟踪方法调用到`toJSONString(Object, SerializeConfig ,SerializeFilter[], String, int, SerializerFeature... )` :
 
 ``` java
-    public static String toJSONString(Object object,                    // 序列化对象
-                                      SerializeConfig config,           // 全局序列化配置
-                                      SerializeFilter[] filters,        // 序列化拦截器
-                                      String dateFormat,                // 序列化日期格式
-                                      int defaultFeatures,              // 默认序列化特性
-                                      SerializerFeature... features) {  // 自定义序列化特性
+    public static String toJSONString(Object object,                   /** 序列化对象    */
+                                      SerializeConfig config,          /** 全局序列化配置 */
+                                      SerializeFilter[] filters,       /** 序列化拦截器   */
+                                      String dateFormat,               /** 序列化日期格式 */
+                                      int defaultFeatures,             /** 默认序列化特性 */
+                                      SerializerFeature... features) { /** 自定义序列化特性 */
         /** 初始化序列化writer，用features覆盖defaultFeatures配置 */
         SerializeWriter out = new SerializeWriter(null, defaultFeatures, features);
 
@@ -70,3 +70,40 @@ fastjson序列化主要使用入口就是在`JSON.java`类中，它提供非常�
 ```
 
 这个序列化方法实际并不是真正执行序列化操作，首先做序列化特性配置，然后追加序列化拦截器，开始执行序列化对象操作委托给了config对象查找。
+
+我们继续进入`serializer.write(object)` 查看：
+
+``` java
+    public final void write(Object object) {
+        if (object == null) {
+            /** 如果对象为空，直接输出 "null" 字符串 */
+            out.writeNull();
+            return;
+        }
+
+        Class<?> clazz = object.getClass();
+        /** 根据对象的Class类型查找具体序列化实例 */
+        ObjectSerializer writer = getObjectWriter(clazz);
+
+        try {
+            /** 使用具体serializer实例处理对象 */
+            writer.write(this, object, null, null, 0);
+        } catch (IOException e) {
+            throw new JSONException(e.getMessage(), e);
+        }
+    }
+```
+
+## 序列化回调接口
+
+### ObjectSerializer序列化接口
+
+我们发现真正序列化对象的时候是由具体`ObjectSerializer`实例完成，我们首先查看一下接口定义：
+
+``` java
+    void write(JSONSerializer serializer, /** json序列化实例 */
+               Object object,       /** 待序列化的对象*/
+               Object fieldName,    /** 待序列化字段*/
+               Type fieldType,      /** 待序列化字段类型 */
+               int features) throws IOException;
+```

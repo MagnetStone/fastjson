@@ -67,9 +67,9 @@ public interface ObjectSerializer {
      * @param features parent object field serializer features
      * @throws IOException
      */
-    void write(JSONSerializer serializer, //
-               Object object, //
-               Object fieldName, //
-               Type fieldType, //
+    void write(JSONSerializer serializer, /** json序列化实例 */
+               Object object,       /** 待序列化的对象*/
+               Object fieldName,    /** 待序列化字段*/
+               Type fieldType,      /** 待序列化字段类型 */
                int features) throws IOException;
 }
