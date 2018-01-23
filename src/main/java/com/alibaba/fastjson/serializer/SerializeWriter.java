@@ -1799,28 +1799,35 @@ public final class SerializeWriter extends Writer {
         int newcount = count + nameLen + 4 + intSize;
         if (newcount > buf.length) {
             if (writer != null) {
+                /** 依次输出字段分隔符，字段：字段值 */
                 write(seperator);
                 writeString(name);
                 write(':');
                 write(value);
                 return;
             }
+            /** 输出器writer为null触发扩容，扩容到为原有buf容量1.5倍+1, copy原有buf的字符*/
             expandCapacity(newcount);
         }
 
         int start = count;
         count = newcount;
 
+        /** 输出字段分隔符，一般是, */
         buf[start] = seperator;
 
         int nameEnd = start + nameLen + 1;
 
+        /** 输出字段属性分隔符，一般是单引号或双引号 */
         buf[start + 1] = keySeperator;
 
+        /** 输出字段名称 */
         name.getChars(0, nameLen, buf, start + 2);
 
+        /** 字段名称添加分隔符，一般是单引号或双引号 */
         buf[nameEnd + 1] = keySeperator;
 
+        /** 输出boolean类型字符串值 */
         if (value) {
             System.arraycopy(":true".toCharArray(), 0, buf, nameEnd + 2, 5);
         } else {
@@ -1840,12 +1847,14 @@ public final class SerializeWriter extends Writer {
 
     public void writeFieldValue(char seperator, String name, int value) {
         if (value == Integer.MIN_VALUE || !quoteFieldNames) {
+            /** 如果是整数最小值或不需要输出双引号，则一次输出字段分隔符，字段名字，字段值 */
             write(seperator);
             writeFieldName(name);
             writeInt(value);
             return;
         }
 
+        /** 根据数字判断占用的位数，负数会多一位用于存储字符`-` */
         int intSize = (value < 0) ? IOUtils.stringSize(-value) + 1 : IOUtils.stringSize(value);
 
         int nameLen = name.length();
@@ -1857,23 +1866,28 @@ public final class SerializeWriter extends Writer {
                 writeInt(value);
                 return;
             }
+            /** 扩容到为原有buf容量1.5倍+1, copy原有buf的字符*/
             expandCapacity(newcount);
         }
 
         int start = count;
         count = newcount;
 
+        /** 输出字段分隔符，一般是, */
         buf[start] = seperator;
 
         int nameEnd = start + nameLen + 1;
 
+        /** 输出字段属性分隔符，一般是单引号或双引号 */
         buf[start + 1] = keySeperator;
 
+        /** 输出字段名称 */
         name.getChars(0, nameLen, buf, start + 2);
 
         buf[nameEnd + 1] = keySeperator;
         buf[nameEnd + 2] = ':';
 
+        /** 输出整数值，对整数转化成单字符 */
         IOUtils.getChars(value, count, buf);
     }
 
