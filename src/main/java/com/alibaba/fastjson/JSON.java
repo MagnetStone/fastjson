@@ -657,19 +657,26 @@ public abstract class JSON implements JSONStreamAware, JSONAware {
      * @since 1.2.9
      * @return
      */
-    public static String toJSONString(Object object, // 
-                                      SerializeConfig config, // 
-                                      SerializeFilter[] filters, // 
-                                      String dateFormat, //
-                                      int defaultFeatures, // 
-                                      SerializerFeature... features) {
+    public static String toJSONString(Object object,                    // 序列化对象
+                                      SerializeConfig config,           // 全局序列化配置
+                                      SerializeFilter[] filters,        // 序列化拦截器
+                                      String dateFormat,                // 序列化日期格式
+                                      int defaultFeatures,              // 默认序列化特性
+                                      SerializerFeature... features) {  // 自定义序列化特性
+        /** 初始化序列化writer，用features覆盖defaultFeatures配置 */
         SerializeWriter out = new SerializeWriter(null, defaultFeatures, features);
 
         try {
+
+            /**
+             *  初始化JSONSerializer，序列化类型由它委托config查找具体
+             *  序列化处理器处理，序列化结果写入out的buffer中
+             */
             JSONSerializer serializer = new JSONSerializer(out, config);
             
             if (dateFormat != null && dateFormat.length() != 0) {
                 serializer.setDateFormat(dateFormat);
+                /** 调用out 重新配置属性 并且打开WriteDateUseDateFormat特性 */
                 serializer.config(SerializerFeature.WriteDateUseDateFormat, true);
             }
 
