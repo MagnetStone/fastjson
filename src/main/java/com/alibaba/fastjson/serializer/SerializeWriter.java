@@ -1114,7 +1114,9 @@ public final class SerializeWriter extends Writer {
             }
             count = newcount;
 
+            /** 将特殊字符转换成native编码，目的是节省存储空间*/
             if (specialCount == 1) {
+                // 行分隔符
                 if (lastSpecial == '\u2028') {
                     int srcPos = lastSpecialIndex + 1;
                     int destPos = lastSpecialIndex + 6;
@@ -1126,7 +1128,9 @@ public final class SerializeWriter extends Writer {
                     buf[++lastSpecialIndex] = '0';
                     buf[++lastSpecialIndex] = '2';
                     buf[++lastSpecialIndex] = '8';
-                } else if (lastSpecial == '\u2029') {
+                }
+                // 段落分隔符
+                else if (lastSpecial == '\u2029') {
                     int srcPos = lastSpecialIndex + 1;
                     int destPos = lastSpecialIndex + 6;
                     int LengthOfCopy = end - lastSpecialIndex - 1;
@@ -1181,6 +1185,7 @@ public final class SerializeWriter extends Writer {
                 for (int i = textIndex; i < text.length(); ++i) {
                     char ch = text.charAt(i);
 
+                    /** 将特殊字符转换成native编码，目的是节省存储空间*/ 
                     if (browserSecure && (ch == '('
                             || ch == ')'
                             || ch == '<'
@@ -1208,6 +1213,7 @@ public final class SerializeWriter extends Writer {
                             end++;
                         }
                     } else {
+                        // 行分隔符 、段落分隔符
                         if (ch == '\u2028' || ch == '\u2029') {
                             buf[bufIndex++] = '\\';
                             buf[bufIndex++] = 'u';
