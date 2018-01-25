@@ -790,3 +790,47 @@ map序列化实现方法主要做了以下几件事情：
 1. 处理对象引用，使用jdk的IdentityHashMap类严格判断对象严格相等。
 2. 针对map的key和value执行拦截器操作。
 3. 针对value的类型，查找value的class类型序列化输出。
+
+序列化map处理引用的逻辑在 `com.alibaba.fastjson.serializer.JSONSerializer#writeReference` :
+
+``` java
+    public void writeReference(Object object) {
+        SerialContext context = this.context;
+        Object current = context.object;
+
+        /** 如果输出引用就是自己this, ref值为 @ */
+        if (object == current) {
+            out.write("{\"$ref\":\"@\"}");
+            return;
+        }
+
+        SerialContext parentContext = context.parent;
+
+        /** 如果输出引用就是父引用, ref值为 .. */
+        if (parentContext != null) {
+            if (object == parentContext.object) {
+                out.write("{\"$ref\":\"..\"}");
+                return;
+            }
+        }
+
+        SerialContext rootContext = context;
+        /** 查找最顶层序列化context */
+        for (;;) {
+            if (rootContext.parent == null) {
+                break;
+            }
+            rootContext = rootContext.parent;
+        }
+
+        if (object == rootContext.object) {
+            /** 如果最顶层引用就是自己this, ref值为 $*/
+            out.write("{\"$ref\":\"$\"}");
+        } else {
+            /** 常规java对象引用，直接输出 */
+            out.write("{\"$ref\":\"");
+            out.write(references.get(object).toString());
+            out.write("\"}");
+        }
+    }
+```
