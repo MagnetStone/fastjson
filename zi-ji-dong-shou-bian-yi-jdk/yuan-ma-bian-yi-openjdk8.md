@@ -89,6 +89,15 @@ source ~/.bash_profile
 
 ## 开始编译
 
+为了方便我直接指定我当前bootstrap jdk1.7的版本，我的~/.bash_profile :
+
+```
+export ANT_HOME=/Users/Jason/tools/apache-ant-1.10.1
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.7.0_79.jdk/Contents/Home
+# export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_121.jdk/Contents/Home
+export CLASSPATH=.:${JAVA_HOME}/lib:${JAVA_HOME}/jre/lib:${ANT_HOME}/lib
+```
+
 ### 生成配置
 
 ```
