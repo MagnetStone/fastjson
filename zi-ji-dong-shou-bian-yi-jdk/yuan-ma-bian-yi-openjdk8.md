@@ -137,6 +137,7 @@ make all COMPILER_WARNINGS_FATAL=false
 ## 使用openjdk8
 
 1. 生成的jdk Home 在源码目录build ：
+
 ```
 build/macosx-x86_64-normal-server-slowdebug/images/j2sdk-bundle/jdk1.8.0.jdk/Contents/Home
 ```
