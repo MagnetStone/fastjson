@@ -39,6 +39,7 @@ brew install freetype
 2. 安装xcode
 直接从 `App Store` 中下载安装 或命令行安装 `xcode-select --install` 
 3. 安装gcc编译器
+
 不要安装编译器版本高于5的，因为默认启用c++14 导致编译中断
 
 ```
