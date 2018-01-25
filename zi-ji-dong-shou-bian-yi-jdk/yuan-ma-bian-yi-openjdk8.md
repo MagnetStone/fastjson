@@ -32,6 +32,7 @@ sh ./getModules.sh
 ### 安装依赖
 
 * 安装freetype
+
 ```
 brew install freetype
 ```
@@ -83,7 +84,7 @@ source ~/.bash_profile
  ```
  static inline void attachCurrentThread(void** env);
  ```
- 
+
 函数名前面添加static 关键字。
 
 ## 开始编译
