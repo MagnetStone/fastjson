@@ -157,6 +157,7 @@ public class JSONSerializer extends SerializeFilterable {
         SerialContext context = this.context;
         Object current = context.object;
 
+        /** 如果输出引用就是自己this, ref值为 @ */
         if (object == current) {
             out.write("{\"$ref\":\"@\"}");
             return;
@@ -164,6 +165,7 @@ public class JSONSerializer extends SerializeFilterable {
 
         SerialContext parentContext = context.parent;
 
+        /** 如果输出引用就是父引用, ref值为 .. */
         if (parentContext != null) {
             if (object == parentContext.object) {
                 out.write("{\"$ref\":\"..\"}");
@@ -172,6 +174,7 @@ public class JSONSerializer extends SerializeFilterable {
         }
 
         SerialContext rootContext = context;
+        /** 查找最顶层序列化context */
         for (;;) {
             if (rootContext.parent == null) {
                 break;
@@ -180,8 +183,10 @@ public class JSONSerializer extends SerializeFilterable {
         }
 
         if (object == rootContext.object) {
+            /** 如果最顶层引用就是自己this, ref值为 $*/
             out.write("{\"$ref\":\"$\"}");
         } else {
+            /** 常规java对象引用，直接输出 */
             out.write("{\"$ref\":\"");
             out.write(references.get(object).toString());
             out.write("\"}");

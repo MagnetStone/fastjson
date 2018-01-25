@@ -49,11 +49,12 @@ public class MapSerializer extends SerializeFilterable implements ObjectSerializ
             , Object object
             , Object fieldName
             , Type fieldType
-            , int features //
+            , int features
             , boolean unwrapped) throws IOException {
         SerializeWriter out = serializer.out;
 
         if (object == null) {
+            /** 如果map是null, 输出 "null" 字符串 */
             out.writeNull();
             return;
         }
@@ -61,6 +62,7 @@ public class MapSerializer extends SerializeFilterable implements ObjectSerializ
         Map<?, ?> map = (Map<?, ?>) object;
         final int mapSortFieldMask = SerializerFeature.MapSortField.mask;
         if ((out.features & mapSortFieldMask) != 0 || (features & mapSortFieldMask) != 0) {
+            /** JSONObject包装HashMap或者LinkedHashMap */
             if (map instanceof JSONObject) {
                 map = ((JSONObject) map).getInnerMap();
             }
@@ -75,11 +77,13 @@ public class MapSerializer extends SerializeFilterable implements ObjectSerializ
         }
 
         if (serializer.containsReference(object)) {
+            /** 处理对象引用，下文详细分析 */
             serializer.writeReference(object);
             return;
         }
 
         SerialContext parent = serializer.context;
+        /** 创建当前新的序列化context */
         serializer.setContext(parent, object, fieldName, 0);
         try {
             if (!unwrapped) {
@@ -98,6 +102,7 @@ public class MapSerializer extends SerializeFilterable implements ObjectSerializ
                 Class<?> mapClass = map.getClass();
                 boolean containsKey = (mapClass == JSONObject.class || mapClass == HashMap.class || mapClass == LinkedHashMap.class) 
                         && map.containsKey(typeKey);
+                /** 序列化的map不包含key=@type或者自定义值，则输出map的类名 */
                 if (!containsKey) {
                     out.writeFieldName(typeKey);
                     out.writeString(object.getClass().getName());
@@ -111,6 +116,7 @@ public class MapSerializer extends SerializeFilterable implements ObjectSerializ
                 Object entryKey = entry.getKey();
 
                 {
+                    /** 遍历JSONSerializer的PropertyPreFilter拦截器，拦截key是否输出 */
                     List<PropertyPreFilter> preFilters = serializer.propertyPreFilters;
                     if (preFilters != null && preFilters.size() > 0) {
                         if (entryKey == null || entryKey instanceof String) {
@@ -126,6 +132,7 @@ public class MapSerializer extends SerializeFilterable implements ObjectSerializ
                     }
                 }
                 {
+                    /** 遍历PropertyPreFilter拦截器，拦截key是否输出 */
                     List<PropertyPreFilter> preFilters = this.propertyPreFilters;
                     if (preFilters != null && preFilters.size() > 0) {
                         if (entryKey == null || entryKey instanceof String) {
@@ -142,6 +149,7 @@ public class MapSerializer extends SerializeFilterable implements ObjectSerializ
                 }
                 
                 {
+                    /** 遍历JSONSerializer的PropertyFilter拦截器，拦截key是否输出 */
                     List<PropertyFilter> propertyFilters = serializer.propertyFilters;
                     if (propertyFilters != null && propertyFilters.size() > 0) {
                         if (entryKey == null || entryKey instanceof String) {
@@ -157,6 +165,7 @@ public class MapSerializer extends SerializeFilterable implements ObjectSerializ
                     }
                 }
                 {
+                    /** 遍历PropertyFilter拦截器，拦截key是否输出 */
                     List<PropertyFilter> propertyFilters = this.propertyFilters;
                     if (propertyFilters != null && propertyFilters.size() > 0) {
                         if (entryKey == null || entryKey instanceof String) {
@@ -173,6 +182,7 @@ public class MapSerializer extends SerializeFilterable implements ObjectSerializ
                 }
                 
                 {
+                    /** 遍历JSONSerializer的NameFilter拦截器，适用于key字符别名串转换 */
                     List<NameFilter> nameFilters = serializer.nameFilters;
                     if (nameFilters != null && nameFilters.size() > 0) {
                         if (entryKey == null || entryKey instanceof String) {
@@ -184,6 +194,7 @@ public class MapSerializer extends SerializeFilterable implements ObjectSerializ
                     }
                 }
                 {
+                    /** 遍历NameFilter拦截器，适用于key字符串别名转换 */
                     List<NameFilter> nameFilters = this.nameFilters;
                     if (nameFilters != null && nameFilters.size() > 0) {
                         if (entryKey == null || entryKey instanceof String) {
@@ -196,6 +207,7 @@ public class MapSerializer extends SerializeFilterable implements ObjectSerializ
                 }
 
                 {
+                    /** 处理map序列化value拦截器, ValueFilter 和 ContextValueFilter */
                     if (entryKey == null || entryKey instanceof String) {
                         value = this.processValue(serializer, null, object, (String) entryKey, value);
                     } else {
@@ -208,6 +220,7 @@ public class MapSerializer extends SerializeFilterable implements ObjectSerializ
                 }
 
                 if (value == null) {
+                    /** 如果开启map为Null，不输出 */
                     if (!out.isEnabled(SerializerFeature.WRITE_MAP_NULL_FEATURES)) {
                         continue;
                     }
@@ -216,6 +229,7 @@ public class MapSerializer extends SerializeFilterable implements ObjectSerializ
                 if (entryKey instanceof String) {
                     String key = (String) entryKey;
 
+                    /** 如果不是第一个属性字段增加分隔符 */
                     if (!first) {
                         out.write(',');
                     }
@@ -223,12 +237,14 @@ public class MapSerializer extends SerializeFilterable implements ObjectSerializ
                     if (out.isEnabled(SerializerFeature.PrettyFormat)) {
                         serializer.println();
                     }
+                    /** 输出key */
                     out.writeFieldName(key, true);
                 } else {
                     if (!first) {
                         out.write(',');
                     }
 
+                    /** 开启WriteNonStringKeyAsString, 将key做一次json串转换 */
                     if (out.isEnabled(NON_STRINGKEY_AS_STRING) && !(entryKey instanceof Enum)) {
                         String strEntryKey = JSON.toJSONString(entryKey);
                         serializer.write(strEntryKey);
@@ -242,6 +258,7 @@ public class MapSerializer extends SerializeFilterable implements ObjectSerializ
                 first = false;
 
                 if (value == null) {
+                    /** 如果value为空，输出空值 */
                     out.writeNull();
                     continue;
                 }
@@ -264,9 +281,11 @@ public class MapSerializer extends SerializeFilterable implements ObjectSerializ
                         }
                     }
 
+                    /** 特殊处理泛型，这里假定泛型第二参数作为值的真实类型 */
                     JavaBeanSerializer javaBeanSerializer = (JavaBeanSerializer) preWriter;
                     javaBeanSerializer.writeNoneASM(serializer, value, entryKey, valueType, features);
                 } else {
+                    /** 根据value类型的序列化器 序列化value */
                     preWriter.write(serializer, value, entryKey, null, features);
                 }
             }
