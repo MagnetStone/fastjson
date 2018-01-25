@@ -813,7 +813,7 @@ fastjson针对常用的类型已经注册了序列化实现方案：
     }
 ```
 
-进入`com.alibaba.fastjson.serializer.MapSerializer#write(com.alibaba.fastjson.serializer.JSONSerializer, java.lang.Object, java.lang.Object, java.lang.reflect.Type, int, boolean)`方法:
+进入`MapSerializer#write(com.alibaba.fastjson.serializer.JSONSerializer, java.lang.Object, java.lang.Object, java.lang.reflect.Type, int, boolean)`方法:
 
 ```java
     public void write(JSONSerializer serializer
