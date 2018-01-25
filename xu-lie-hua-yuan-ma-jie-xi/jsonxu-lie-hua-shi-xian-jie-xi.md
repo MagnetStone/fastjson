@@ -4,7 +4,7 @@ fastjson序列化主要使用入口就是在`JSON.java`类中，它提供非常�
 
 ### JSON成员函数
 
-``` java
+```java
     /**
      *  便捷序列化java对象，序列化对象可以包含任意泛型属性字段，但是不适用本身是泛型的对象。
      *  默认序列化返回字符串，可以使用writeJSONString(Writer, Object, SerializerFeature[])
@@ -20,7 +20,7 @@ fastjson序列化主要使用入口就是在`JSON.java`类中，它提供非常�
 
 使用便捷接口toJSONString方法，可以将任意java对象序列化为json字符串，内部调用`toJSONString(Object, SerializeFilter[], SerializerFeature... )` :
 
-``` java
+```java
     public static String toJSONString(Object object, SerializeFilter[] filters, SerializerFeature... features) {
         return toJSONString(object, SerializeConfig.globalInstance, filters, null, DEFAULT_GENERATE_FEATURE, features);
     }
@@ -28,7 +28,7 @@ fastjson序列化主要使用入口就是在`JSON.java`类中，它提供非常�
 
 继续跟踪方法调用到`toJSONString(Object, SerializeConfig ,SerializeFilter[], String, int, SerializerFeature... )` :
 
-``` java
+```java
     public static String toJSONString(Object object,                   /** 序列化对象    */
                                       SerializeConfig config,          /** 全局序列化配置 */
                                       SerializeFilter[] filters,       /** 序列化拦截器   */
@@ -45,7 +45,7 @@ fastjson序列化主要使用入口就是在`JSON.java`类中，它提供非常�
              *  序列化处理器处理，序列化结果写入out的buffer中
              */
             JSONSerializer serializer = new JSONSerializer(out, config);
-            
+
             if (dateFormat != null && dateFormat.length() != 0) {
                 serializer.setDateFormat(dateFormat);
                 /** 调用out 重新配置属性 并且打开WriteDateUseDateFormat特性 */
@@ -73,7 +73,7 @@ fastjson序列化主要使用入口就是在`JSON.java`类中，它提供非常�
 
 我们继续进入`serializer.write(object)` 查看：
 
-``` java
+```java
     public final void write(Object object) {
         if (object == null) {
             /** 如果对象为空，直接输出 "null" 字符串 */
@@ -100,7 +100,7 @@ fastjson序列化主要使用入口就是在`JSON.java`类中，它提供非常�
 
 我们发现真正序列化对象的时候是由具体`ObjectSerializer`实例完成，我们首先查看一下接口定义：
 
-``` java
+```java
     void write(JSONSerializer serializer, /** json序列化实例 */
                Object object,       /** 待序列化的对象*/
                Object fieldName,    /** 待序列化字段*/
@@ -110,9 +110,9 @@ fastjson序列化主要使用入口就是在`JSON.java`类中，它提供非常�
 
 当fastjson序列化特定的字段时会回调这个方法。
 
-我们继续跟踪`writer.write(this, object, null, null, 0)` : 
+我们继续跟踪`writer.write(this, object, null, null, 0)` :
 
-``` java
+```java
     public final void write(Object object) {
         if (object == null) {
             /** 如果对象为空，直接输出 "null" 字符串 */
@@ -135,7 +135,7 @@ fastjson序列化主要使用入口就是在`JSON.java`类中，它提供非常�
 
 我们发现在方法内部调用`getObjectWriter(clazz)`根据具体类型查找序列化实例，方法内部只有一行调用 `config.getObjectWriter(clazz)`，让我们更进一步查看委托实现细节`com.alibaba.fastjson.serializer.SerializeConfig#getObjectWriter(java.lang.Class<?>)`:
 
-``` java
+```java
     public ObjectSerializer getObjectWriter(Class<?> clazz) {
         return getObjectWriter(clazz, true);
     }
@@ -143,8 +143,8 @@ fastjson序列化主要使用入口就是在`JSON.java`类中，它提供非常�
 
 内部又调用`com.alibaba.fastjson.serializer.SerializeConfig#getObjectWriter(java.lang.Class<?>, boolean)`，这个类实现相对复杂了一些，我会按照代码顺序梳理所有序列化实例的要点 :
 
-``` java
-	private ObjectSerializer getObjectWriter(Class<?> clazz, boolean create) {
+```java
+    private ObjectSerializer getObjectWriter(Class<?> clazz, boolean create) {
         /** 首先从内部已经注册查找特定class的序列化实例 */
         ObjectSerializer writer = serializers.get(clazz);
 
@@ -196,7 +196,7 @@ fastjson序列化主要使用入口就是在`JSON.java`类中，它提供非常�
                 writer = serializers.get(clazz);
             }
         }
-        
+
         if (writer == null) {
             String className = clazz.getName();
             Class<?> superClass;
@@ -313,7 +313,7 @@ fastjson序列化主要使用入口就是在`JSON.java`类中，它提供非常�
                         }
                     }
                 }
-                
+
                 // jdk8
                 if ((!jdk8Error) //
                     && (className.startsWith("java.time.") //
@@ -377,7 +377,7 @@ fastjson序列化主要使用入口就是在`JSON.java`类中，它提供非常�
                         jdk8Error = true;
                     }
                 }
-                
+
                 if ((!oracleJdbcError) //
                     && className.startsWith("oracle.sql.")) {
                     try {
@@ -398,7 +398,7 @@ fastjson序列化主要使用入口就是在`JSON.java`类中，它提供非常�
                         oracleJdbcError = true;
                     }
                 }
-                
+
                 if ((!springfoxError) //
                     && className.equals("springfox.documentation.spring.web.json.Json")) {
                     try {
@@ -513,61 +513,61 @@ fastjson序列化主要使用入口就是在`JSON.java`类中，它提供非常�
 
 fastjson针对常用的类型已经注册了序列化实现方案：
 
-| 注册的类型 | 序列化实例  | 是否支持序列化 | 是否支持反序列化 |
-|:------------- |:---------------| :-------------:|:-------------:|
-| Boolean      | BooleanCodec |         是|         是|
-| Character      | CharacterCodec        |           是|         是|
-| Byte | IntegerCodec        |            是 |         是|
-| Short | IntegerCodec        |            是 |         是|
-| Integer | IntegerCodec        |            是 |         是|
-| Long | LongCodec        |            是 |         是|
-| Float | FloatCodec        |            是 |         是|
-| Double | DoubleSerializer        |            是 |         -|
-| BigDecimal | BigDecimalCodec        |            是 |         是|
-| BigInteger | BigIntegerCodec        |            是 |         是|
-| String | StringCodec        |            是 |         是|
-| byte[] | PrimitiveArraySerializer        |            是 |         -|
-| short[] | PrimitiveArraySerializer        |            是 |         -|
-| int[] | PrimitiveArraySerializer        |            是 |         -|
-| long[] | PrimitiveArraySerializer        |            是 |         -|
-| float[] | PrimitiveArraySerializer        |            是 |         -|
-| double[] | PrimitiveArraySerializer        |            是 |         -|
-| boolean[] | PrimitiveArraySerializer        |            是 |         -|
-| char[] | PrimitiveArraySerializer        |            是 |         -|
-| Object[] | ObjectArrayCodec        |            是 |         是|
-| Class | MiscCodec        |            是 |         是|
-| SimpleDateFormat | MiscCodec        |            是 |         是|
-| Currency | MiscCodec        |            是 |         是|
-| TimeZone | MiscCodec        |            是 |         是|
-| InetAddress | MiscCodec        |            是 |         是|
-| Inet4Address | MiscCodec        |            是 |         是|
-| Inet6Address | MiscCodec        |            是 |         是|
-| InetSocketAddress | MiscCodec        |            是 |         是|
-| File | MiscCodec        |            是 |         是|
-| Appendable | AppendableSerializer        |            是 |         -|
-| StringBuffer | AppendableSerializer        |            是 |         -|
-| StringBuilder | AppendableSerializer        |            是 |         -|
-| Charset | ToStringSerializer        |            是 |         -|
-| Pattern | ToStringSerializer        |            是 |         -|
-| Locale | ToStringSerializer        |            是 |         -|
-| URI | ToStringSerializer        |            是 |         -|
-| URL | ToStringSerializer        |            是 |         -|
-| UUID | ToStringSerializer        |            是 |         -|
-| AtomicBoolean | AtomicCodec        |            是 |         是|
-| AtomicInteger | AtomicCodec        |            是 |         是|
-| AtomicLong | AtomicCodec        |            是 |         是|
-| AtomicReference | ReferenceCodec        |            是 |         是|
-| AtomicIntegerArray | AtomicCodec        |            是 |         是|
-| AtomicLongArray | AtomicCodec        |            是 |         是|
-| WeakReference | ReferenceCodec        |            是 |         是|
-| SoftReference | ReferenceCodec        |            是 |         是|
-| LinkedList | CollectionCodec        |            是 |         是|
+| 注册的类型 | 序列化实例 | 是否支持序列化 | 是否支持反序列化 |
+| :--- | :--- | :---: | :---: |
+| Boolean | BooleanCodec | 是 | 是 |
+| Character | CharacterCodec | 是 | 是 |
+| Byte | IntegerCodec | 是 | 是 |
+| Short | IntegerCodec | 是 | 是 |
+| Integer | IntegerCodec | 是 | 是 |
+| Long | LongCodec | 是 | 是 |
+| Float | FloatCodec | 是 | 是 |
+| Double | DoubleSerializer | 是 | - |
+| BigDecimal | BigDecimalCodec | 是 | 是 |
+| BigInteger | BigIntegerCodec | 是 | 是 |
+| String | StringCodec | 是 | 是 |
+| byte\[\] | PrimitiveArraySerializer | 是 | - |
+| short\[\] | PrimitiveArraySerializer | 是 | - |
+| int\[\] | PrimitiveArraySerializer | 是 | - |
+| long\[\] | PrimitiveArraySerializer | 是 | - |
+| float\[\] | PrimitiveArraySerializer | 是 | - |
+| double\[\] | PrimitiveArraySerializer | 是 | - |
+| boolean\[\] | PrimitiveArraySerializer | 是 | - |
+| char\[\] | PrimitiveArraySerializer | 是 | - |
+| Object\[\] | ObjectArrayCodec | 是 | 是 |
+| Class | MiscCodec | 是 | 是 |
+| SimpleDateFormat | MiscCodec | 是 | 是 |
+| Currency | MiscCodec | 是 | 是 |
+| TimeZone | MiscCodec | 是 | 是 |
+| InetAddress | MiscCodec | 是 | 是 |
+| Inet4Address | MiscCodec | 是 | 是 |
+| Inet6Address | MiscCodec | 是 | 是 |
+| InetSocketAddress | MiscCodec | 是 | 是 |
+| File | MiscCodec | 是 | 是 |
+| Appendable | AppendableSerializer | 是 | - |
+| StringBuffer | AppendableSerializer | 是 | - |
+| StringBuilder | AppendableSerializer | 是 | - |
+| Charset | ToStringSerializer | 是 | - |
+| Pattern | ToStringSerializer | 是 | - |
+| Locale | ToStringSerializer | 是 | - |
+| URI | ToStringSerializer | 是 | - |
+| URL | ToStringSerializer | 是 | - |
+| UUID | ToStringSerializer | 是 | - |
+| AtomicBoolean | AtomicCodec | 是 | 是 |
+| AtomicInteger | AtomicCodec | 是 | 是 |
+| AtomicLong | AtomicCodec | 是 | 是 |
+| AtomicReference | ReferenceCodec | 是 | 是 |
+| AtomicIntegerArray | AtomicCodec | 是 | 是 |
+| AtomicLongArray | AtomicCodec | 是 | 是 |
+| WeakReference | ReferenceCodec | 是 | 是 |
+| SoftReference | ReferenceCodec | 是 | 是 |
+| LinkedList | CollectionCodec | 是 | 是 |
 
 ### MapSerializer序列化
 
 按照代码的顺序第一个分析到Map序列化器，内部调用write：
 
-``` java
+```java
     public void write(JSONSerializer serializer
             , Object object
             , Object fieldName
@@ -579,7 +579,7 @@ fastjson针对常用的类型已经注册了序列化实现方案：
 
 进入`com.alibaba.fastjson.serializer.MapSerializer#write(com.alibaba.fastjson.serializer.JSONSerializer, java.lang.Object, java.lang.Object, java.lang.reflect.Type, int, boolean)`方法:
 
-``` java
+```java
     public void write(JSONSerializer serializer
             , Object object
             , Object fieldName
@@ -682,7 +682,7 @@ fastjson针对常用的类型已经注册了序列化实现方案：
                         }
                     }
                 }
-                
+
                 {
                     /** 遍历JSONSerializer的PropertyFilter拦截器，拦截key是否输出 */
                     List<PropertyFilter> propertyFilters = serializer.propertyFilters;
@@ -715,7 +715,7 @@ fastjson针对常用的类型已经注册了序列化实现方案：
                         }
                     }
                 }
-                
+
                 {
                     /** 遍历JSONSerializer的NameFilter拦截器，适用于key字符别名串转换 */
                     List<NameFilter> nameFilters = serializer.nameFilters;
@@ -847,7 +847,7 @@ map序列化实现方法主要做了以下几件事情：
 
 序列化map处理引用的逻辑在 `com.alibaba.fastjson.serializer.JSONSerializer#writeReference` :
 
-``` java
+```java
     public void writeReference(Object object) {
         SerialContext context = this.context;
         Object current = context.object;
@@ -890,4 +890,6 @@ map序列化实现方法主要做了以下几件事情：
 ```
 
 ### ListSerializer序列化
+
+
 
