@@ -136,7 +136,24 @@ make all COMPILER_WARNINGS_FATAL=false
 生成jdk8成功会输出耗时信息：
 
 ```
+## Finished docs (build time 00:01:59)
 
+----- Build times -------
+Start 2018-01-25 11:08:51
+End   2018-01-25 11:22:23
+00:00:22 corba
+00:00:28 demos
+00:01:59 docs
+00:05:21 hotspot
+00:00:59 images
+00:00:14 jaxp
+00:00:23 jaxws
+00:02:50 jdk
+00:00:41 langtools
+00:00:12 nashorn
+00:13:32 TOTAL
+-------------------------
+Finished building OpenJDK for target 'all'
 ```
 
 ## 使用openjdk8
@@ -152,8 +169,11 @@ build/macosx-x86_64-normal-server-slowdebug/images/j2sdk-bundle/jdk1.8.0.jdk/Con
 2. 验证jdk版本
 
 ```
-$ java -version
-
+$ cd build/macosx-x86_64-normal-server-slowdebug/images/j2sdk-bundle/jdk1.8.0.jdk/Contents/Home
+$ ./bin/java -version -version
+openjdk version "1.8.0-internal-debug"
+OpenJDK Runtime Environment (build 1.8.0-internal-debug-jason_2018_01_25_11_07-b00)
+OpenJDK 64-Bit Server VM (build 25.71-b00-debug, mixed mode)
 ```
 
 ### 为什么要编译JDK源码
