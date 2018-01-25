@@ -144,6 +144,7 @@ build/macosx-x86_64-normal-server-slowdebug/images/j2sdk-bundle/jdk1.8.0.jdk/Con
 直接在intellij idea 或者 eclipse 中指定上面的Home即可。
 
 2. 验证jdk版本
+
 ```
 $ java -version
 
