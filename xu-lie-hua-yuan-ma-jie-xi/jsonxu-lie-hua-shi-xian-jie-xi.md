@@ -563,6 +563,242 @@ fastjson针对常用的类型已经注册了序列化实现方案：
 | SoftReference | ReferenceCodec | 是 | 是 |
 | LinkedList | CollectionCodec | 是 | 是 |
 
+### BooleanCodec序列化
+
+其实理解了前面分析`SerializeWriter`, 接下来的内容比较容易理解, `BooleanCodec` 序列化实现 ：
+
+``` java
+    public void write(JSONSerializer serializer, Object object, Object fieldName, Type fieldType, int features) throws IOException {
+        SerializeWriter out = serializer.out;
+
+        /** 当前object是boolean值, 如果为null,
+         *  并且序列化开启WriteNullBooleanAsFalse特性, 输出false
+         */
+        Boolean value = (Boolean) object;
+        if (value == null) {
+            out.writeNull(SerializerFeature.WriteNullBooleanAsFalse);
+            return;
+        }
+
+        if (value.booleanValue()) {
+            out.write("true");
+        } else {
+            out.write("false");
+        }
+    }
+```
+
+`BooleanCodec`序列化实现主要判断是否开启如果为null值是否输出false，否则输出boolean字面量值。
+
+### CharacterCodec序列化
+
+``` java
+    public void write(JSONSerializer serializer, Object object, Object fieldName, Type fieldType, int features) throws IOException {
+        SerializeWriter out = serializer.out;
+
+        Character value = (Character) object;
+        if (value == null) {
+            /** 字符串为空，输出空字符串 */
+            out.writeString("");
+            return;
+        }
+
+        char c = value.charValue();
+        if (c == 0) {
+            /** 空白字符，输出unicode空格字符 */
+            out.writeString("\u0000");
+        } else {
+            /** 输出字符串值 */
+            out.writeString(value.toString());
+        }
+    }
+```
+### IntegerCodec序列化
+
+``` java
+    public void write(JSONSerializer serializer, Object object, Object fieldName, Type fieldType, int features) throws IOException {
+        SerializeWriter out = serializer.out;
+
+        Number value = (Number) object;
+
+        /** 当前object是整形值, 如果为null,
+         *  并且序列化开启WriteNullNumberAsZero特性, 输出0
+         */
+        if (value == null) {
+            out.writeNull(SerializerFeature.WriteNullNumberAsZero);
+            return;
+        }
+
+        /** 判断整形或者长整型，直接输出 */
+        if (object instanceof Long) {
+            out.writeLong(value.longValue());
+        } else {
+            out.writeInt(value.intValue());
+        }
+
+        /** 如果开启WriteClassName特性，输出具体值类型 */
+        if (out.isEnabled(SerializerFeature.WriteClassName)) {
+            Class<?> clazz = value.getClass();
+            if (clazz == Byte.class) {
+                out.write('B');
+            } else if (clazz == Short.class) {
+                out.write('S');
+            }
+        }
+    }
+```
+
+### LongCodec序列化
+
+``` java
+    public void write(JSONSerializer serializer, Object object, Object fieldName, Type fieldType, int features) throws IOException {
+        SerializeWriter out = serializer.out;
+
+        /** 当前object是长整形值, 如果为null,
+         *  并且序列化开启WriteNullNumberAsZero特性, 输出0
+         */
+        if (object == null) {
+            out.writeNull(SerializerFeature.WriteNullNumberAsZero);
+        } else {
+            long value = ((Long) object).longValue();
+            out.writeLong(value);
+
+            /** 如果长整型值范围和整型相同，显示添加L 标识为long */
+            if (out.isEnabled(SerializerFeature.WriteClassName)
+                && value <= Integer.MAX_VALUE && value >= Integer.MIN_VALUE
+                && fieldType != Long.class
+                && fieldType != long.class) {
+                out.write('L');
+            }
+        }
+    }
+```
+
+`Long`类型序列化会特殊标识值落在整数范围内，如果开启`WriteClassName`序列化特性，会追加L字符。
+
+
+### FloatCodec序列化
+
+``` java
+    public void write(JSONSerializer serializer, Object object, Object fieldName, Type fieldType, int features) throws IOException {
+        SerializeWriter out = serializer.out;
+
+        /** 当前object是float值, 如果为null,
+         *  并且序列化开启WriteNullNumberAsZero特性, 输出0
+         */
+        if (object == null) {
+            out.writeNull(SerializerFeature.WriteNullNumberAsZero);
+            return;
+        }
+
+        float floatValue = ((Float) object).floatValue();
+        if (decimalFormat != null) {
+            /** 转换一下浮点数值格式 */
+            String floatText = decimalFormat.format(floatValue);
+            out.write(floatText);
+        } else {
+            out.writeFloat(floatValue, true);
+        }
+    }
+```
+
+### BigDecimalCodec序列化
+
+``` java
+    public void write(JSONSerializer serializer, Object object, Object fieldName, Type fieldType, int features) throws IOException {
+        SerializeWriter out = serializer.out;
+
+        /** 当前object是BigDecimal值, 如果为null,
+         *  并且序列化开启WriteNullNumberAsZero特性, 输出0
+         */
+        if (object == null) {
+            out.writeNull(SerializerFeature.WriteNullNumberAsZero);
+        } else {
+            BigDecimal val = (BigDecimal) object;
+
+            String outText;
+            /** 如果序列化开启WriteBigDecimalAsPlain特性，搞定度输出不会包含指数e */
+            if (out.isEnabled(SerializerFeature.WriteBigDecimalAsPlain)) {
+                outText = val.toPlainString();
+            } else {
+                outText = val.toString();
+            }
+            out.write(outText);
+
+            if (out.isEnabled(SerializerFeature.WriteClassName) && fieldType != BigDecimal.class && val.scale() == 0) {
+                out.write('.');
+            }
+        }
+    }
+```
+
+### BigIntegerCodec序列化
+
+``` java
+    public void write(JSONSerializer serializer, Object object, Object fieldName, Type fieldType, int features) throws IOException {
+        SerializeWriter out = serializer.out;
+
+        /** 当前object是BigInteger值, 如果为null,
+         *  并且序列化开启WriteNullNumberAsZero特性, 输出0
+         */
+        if (object == null) {
+            out.writeNull(SerializerFeature.WriteNullNumberAsZero);
+            return;
+        }
+        
+        BigInteger val = (BigInteger) object;
+        out.write(val.toString());
+    }
+```
+
+### 序列化
+
+``` java
+
+```
+
+### 序列化
+
+``` java
+
+```
+
+### 序列化
+
+``` java
+
+```
+
+### 序列化
+
+``` java
+
+```
+
+### 序列化
+
+``` java
+
+```
+
+### 序列化
+
+``` java
+
+```
+
+### 序列化
+
+``` java
+
+```
+
+### 序列化
+
+``` java
+
+```
+
 ### MapSerializer序列化
 
 按照代码的顺序第一个分析到Map序列化器，内部调用write：

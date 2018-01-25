@@ -36,6 +36,9 @@ public class BooleanCodec implements ObjectSerializer, ObjectDeserializer {
     public void write(JSONSerializer serializer, Object object, Object fieldName, Type fieldType, int features) throws IOException {
         SerializeWriter out = serializer.out;
 
+        /** 当前object是boolean值, 如果为null,
+         *  并且序列化开启WriteNullBooleanAsFalse特性, 输出false
+         */
         Boolean value = (Boolean) object;
         if (value == null) {
             out.writeNull(SerializerFeature.WriteNullBooleanAsFalse);

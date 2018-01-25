@@ -35,14 +35,17 @@ public class CharacterCodec implements ObjectSerializer, ObjectDeserializer {
 
         Character value = (Character) object;
         if (value == null) {
+            /** 字符串为空，输出空字符串 */
             out.writeString("");
             return;
         }
 
         char c = value.charValue();
         if (c == 0) {
+            /** 空白字符，输出unicode空格字符 */
             out.writeString("\u0000");
         } else {
+            /** 输出字符串值 */
             out.writeString(value.toString());
         }
     }

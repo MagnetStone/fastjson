@@ -49,7 +49,10 @@ public class FloatCodec implements ObjectSerializer, ObjectDeserializer {
 
     public void write(JSONSerializer serializer, Object object, Object fieldName, Type fieldType, int features) throws IOException {
         SerializeWriter out = serializer.out;
-        
+
+        /** 当前object是float值, 如果为null,
+         *  并且序列化开启WriteNullNumberAsZero特性, 输出0
+         */
         if (object == null) {
             out.writeNull(SerializerFeature.WriteNullNumberAsZero);
             return;
@@ -57,6 +60,7 @@ public class FloatCodec implements ObjectSerializer, ObjectDeserializer {
 
         float floatValue = ((Float) object).floatValue();
         if (decimalFormat != null) {
+            /** 转换一下浮点数值格式 */
             String floatText = decimalFormat.format(floatValue);
             out.write(floatText);
         } else {

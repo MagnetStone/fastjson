@@ -38,14 +38,18 @@ public class LongCodec implements ObjectSerializer, ObjectDeserializer {
     public void write(JSONSerializer serializer, Object object, Object fieldName, Type fieldType, int features) throws IOException {
         SerializeWriter out = serializer.out;
 
+        /** 当前object是长整形值, 如果为null,
+         *  并且序列化开启WriteNullNumberAsZero特性, 输出0
+         */
         if (object == null) {
             out.writeNull(SerializerFeature.WriteNullNumberAsZero);
         } else {
             long value = ((Long) object).longValue();
             out.writeLong(value);
-    
-            if (out.isEnabled(SerializerFeature.WriteClassName) //
-                && value <= Integer.MAX_VALUE && value >= Integer.MIN_VALUE //
+
+            /** 如果长整型值范围和整型相同，显示添加L 标识为long */
+            if (out.isEnabled(SerializerFeature.WriteClassName)
+                && value <= Integer.MAX_VALUE && value >= Integer.MIN_VALUE
                 && fieldType != Long.class
                 && fieldType != long.class) {
                 out.write('L');

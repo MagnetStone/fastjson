@@ -36,12 +36,16 @@ public class BigDecimalCodec implements ObjectSerializer, ObjectDeserializer {
     public void write(JSONSerializer serializer, Object object, Object fieldName, Type fieldType, int features) throws IOException {
         SerializeWriter out = serializer.out;
 
+        /** 当前object是BigDecimal值, 如果为null,
+         *  并且序列化开启WriteNullNumberAsZero特性, 输出0
+         */
         if (object == null) {
             out.writeNull(SerializerFeature.WriteNullNumberAsZero);
         } else {
             BigDecimal val = (BigDecimal) object;
 
             String outText;
+            /** 如果序列化开启WriteBigDecimalAsPlain特性，搞定度输出不会包含指数e */
             if (out.isEnabled(SerializerFeature.WriteBigDecimalAsPlain)) {
                 outText = val.toPlainString();
             } else {

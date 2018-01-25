@@ -41,18 +41,23 @@ public class IntegerCodec implements ObjectSerializer, ObjectDeserializer {
         SerializeWriter out = serializer.out;
 
         Number value = (Number) object;
-        
+
+        /** 当前object是整形值, 如果为null,
+         *  并且序列化开启WriteNullNumberAsZero特性, 输出0
+         */
         if (value == null) {
             out.writeNull(SerializerFeature.WriteNullNumberAsZero);
             return;
         }
-        
+
+        /** 判断整形或者长整型，直接输出 */
         if (object instanceof Long) {
             out.writeLong(value.longValue());
         } else {
             out.writeInt(value.intValue());
         }
-        
+
+        /** 如果开启WriteClassName特性，输出具体值类型 */
         if (out.isEnabled(SerializerFeature.WriteClassName)) {
             Class<?> clazz = value.getClass();
             if (clazz == Byte.class) {

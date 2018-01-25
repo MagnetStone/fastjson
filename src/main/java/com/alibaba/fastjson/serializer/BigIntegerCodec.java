@@ -35,6 +35,9 @@ public class BigIntegerCodec implements ObjectSerializer, ObjectDeserializer {
     public void write(JSONSerializer serializer, Object object, Object fieldName, Type fieldType, int features) throws IOException {
         SerializeWriter out = serializer.out;
 
+        /** 当前object是BigInteger值, 如果为null,
+         *  并且序列化开启WriteNullNumberAsZero特性, 输出0
+         */
         if (object == null) {
             out.writeNull(SerializerFeature.WriteNullNumberAsZero);
             return;
