@@ -751,10 +751,22 @@ fastjson针对常用的类型已经注册了序列化实现方案：
     }
 ```
 
-### 序列化
+### StringCodec序列化
 
 ``` java
+    public void write(JSONSerializer serializer, String value) {
+        SerializeWriter out = serializer.out;
 
+        /** 当前object是string值, 如果为null,
+         *  并且序列化开启WriteNullStringAsEmpty特性, 输出空串""
+         */
+        if (value == null) {
+            out.writeNull(SerializerFeature.WriteNullStringAsEmpty);
+            return;
+        }
+
+        out.writeString(value);
+    }
 ```
 
 ### 序列化

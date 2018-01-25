@@ -38,6 +38,9 @@ public class StringCodec implements ObjectSerializer, ObjectDeserializer {
     public void write(JSONSerializer serializer, String value) {
         SerializeWriter out = serializer.out;
 
+        /** 当前object是string值, 如果为null,
+         *  并且序列化开启WriteNullStringAsEmpty特性, 输出空串""
+         */
         if (value == null) {
             out.writeNull(SerializerFeature.WriteNullStringAsEmpty);
             return;

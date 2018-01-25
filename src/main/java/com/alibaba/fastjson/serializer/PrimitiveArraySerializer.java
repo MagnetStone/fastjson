@@ -29,6 +29,9 @@ public class PrimitiveArraySerializer implements ObjectSerializer {
         SerializeWriter out = serializer.out;
         
         if (object == null) {
+            /** 当前object是数组值, 如果为null,
+             *  并且序列化开启WriteNullListAsEmpty特性, 输出空串""
+             */
             out.writeNull(SerializerFeature.WriteNullListAsEmpty);
             return;
         }
