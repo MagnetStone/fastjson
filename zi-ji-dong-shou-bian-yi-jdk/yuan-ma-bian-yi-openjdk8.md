@@ -115,12 +115,37 @@ Configuration summary:
 
 Tools summary:
 * Boot JDK:       java version "1.7.0_79" Java(TM) SE Runtime Environment (build 1.7.0_79-b15) Java HotSpot(TM) 64-Bit Server VM (build 24.79-b02, mixed mode)  (at /Library/Java/JavaVirtualMachines/jdk1.7.0_79.jdk/Contents/Home)
-* C Compiler:     Apple LLVM version (clang-900.0.39.2) version 9.0.0 (at /usr/bin/clang)
+* C Compiler:      version Configured with: --prefix=/Applications/Xcode.app/Contents/Developer/usr --with-gxx-include-dir=/usr/include/c++/4.2.1 (at /Applications/Xcode.app/Contents/Developer/usr/bin/gcc)
 * C++ Compiler:    version Configured with: --prefix=/Applications/Xcode.app/Contents/Developer/usr --with-gxx-include-dir=/usr/include/c++/4.2.1 (at /Applications/Xcode.app/Contents/Developer/usr/bin/gcc)
 
 Build performance summary:
 * Cores to use:   4
 * Memory limit:   16384 MB
 * ccache status:  installed, but disabled (version older than 3.1.4)
+
+WARNING: The result of this configuration has overridden an older
+configuration. You *should* run 'make clean' to make sure you get a
+proper build. Failure to do so might result in strange build problems.
+```
+
+### 生成jdk8
+
+```
+make all COMPILER_WARNINGS_FATAL=false
+```
+
+## 使用openjdk8
+
+1. 生成的jdk Home 在源码目录build ：
+```
+build/macosx-x86_64-normal-server-slowdebug/images/j2sdk-bundle/jdk1.8.0.jdk/Contents/Home
+```
+
+直接在intellij idea 或者 eclipse 中指定上面的Home即可。
+
+2. 验证jdk版本
+```
+$ java -version
+
 ```
 
