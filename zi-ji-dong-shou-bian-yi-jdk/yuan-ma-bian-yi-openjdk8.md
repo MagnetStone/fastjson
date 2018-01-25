@@ -32,25 +32,18 @@ sh ./getModules.sh
 ### 安装依赖
 
 1. 安装freetype
-
 ```
 brew install freetype
 ```
-
 或者进入官网[XQuartx](https://www.xquartz.org/)下载dmg安装。
-
 2. 安装xcode
-
 直接从 `App Store` 中下载安装 或命令行安装 `xcode-select --install` 
-
 3. 安装gcc编译器
-
 不要安装编译器版本高于5的，因为默认启用c++14 导致编译中断
 
 ```
 brew install gcc@4.9
 ```
-
 4. 链接gcc编译器(4.9版本)
 
 ```
@@ -132,6 +125,12 @@ proper build. Failure to do so might result in strange build problems.
 
 ```
 make all COMPILER_WARNINGS_FATAL=false
+```
+
+生成jdk8成功会输出耗时信息：
+
+```
+
 ```
 
 ## 使用openjdk8
