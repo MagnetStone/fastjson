@@ -509,6 +509,60 @@ fastjson序列化主要使用入口就是在`JSON.java`类中，它提供非常�
 
 ## 序列化回调接口实现分析
 
+### 内部注册的序列化
+
+fastjson针对常用的类型已经注册了序列化实现方案：
+
+| 注册的类型 | 序列化实例  | 是否支持序列化 | 是否支持反序列化 |
+|:------------- |:---------------| :-------------:|:-------------:|
+| Boolean      | BooleanCodec |         是|         是|
+| Character      | CharacterCodec        |           是|         是|
+| Byte | IntegerCodec        |            是 |         是|
+| Short | IntegerCodec        |            是 |         是|
+| Integer | IntegerCodec        |            是 |         是|
+| Long | LongCodec        |            是 |         是|
+| Float | FloatCodec        |            是 |         是|
+| Double | DoubleSerializer        |            是 |         -|
+| BigDecimal | BigDecimalCodec        |            是 |         是|
+| BigInteger | BigIntegerCodec        |            是 |         是|
+| String | StringCodec        |            是 |         是|
+| byte[] | PrimitiveArraySerializer        |            是 |         -|
+| short[] | PrimitiveArraySerializer        |            是 |         -|
+| int[] | PrimitiveArraySerializer        |            是 |         -|
+| long[] | PrimitiveArraySerializer        |            是 |         -|
+| float[] | PrimitiveArraySerializer        |            是 |         -|
+| double[] | PrimitiveArraySerializer        |            是 |         -|
+| boolean[] | PrimitiveArraySerializer        |            是 |         -|
+| char[] | PrimitiveArraySerializer        |            是 |         -|
+| Object[] | ObjectArrayCodec        |            是 |         是|
+| Class | MiscCodec        |            是 |         是|
+| SimpleDateFormat | MiscCodec        |            是 |         是|
+| Currency | MiscCodec        |            是 |         是|
+| TimeZone | MiscCodec        |            是 |         是|
+| InetAddress | MiscCodec        |            是 |         是|
+| Inet4Address | MiscCodec        |            是 |         是|
+| Inet6Address | MiscCodec        |            是 |         是|
+| InetSocketAddress | MiscCodec        |            是 |         是|
+| File | MiscCodec        |            是 |         是|
+| Appendable | AppendableSerializer        |            是 |         -|
+| StringBuffer | AppendableSerializer        |            是 |         -|
+| StringBuilder | AppendableSerializer        |            是 |         -|
+| Charset | ToStringSerializer        |            是 |         -|
+| Pattern | ToStringSerializer        |            是 |         -|
+| Locale | ToStringSerializer        |            是 |         -|
+| URI | ToStringSerializer        |            是 |         -|
+| URL | ToStringSerializer        |            是 |         -|
+| UUID | ToStringSerializer        |            是 |         -|
+| AtomicBoolean | AtomicCodec        |            是 |         是|
+| AtomicInteger | AtomicCodec        |            是 |         是|
+| AtomicLong | AtomicCodec        |            是 |         是|
+| AtomicReference | ReferenceCodec        |            是 |         是|
+| AtomicIntegerArray | AtomicCodec        |            是 |         是|
+| AtomicLongArray | AtomicCodec        |            是 |         是|
+| WeakReference | ReferenceCodec        |            是 |         是|
+| SoftReference | ReferenceCodec        |            是 |         是|
+| LinkedList | CollectionCodec        |            是 |         是|
+
 ### MapSerializer序列化
 
 按照代码的顺序第一个分析到Map序列化器，内部调用write：
@@ -834,3 +888,6 @@ map序列化实现方法主要做了以下几件事情：
         }
     }
 ```
+
+### ListSerializer序列化
+
