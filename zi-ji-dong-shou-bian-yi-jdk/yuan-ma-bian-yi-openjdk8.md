@@ -37,6 +37,8 @@ sh ./getModules.sh
 brew install freetype
 ```
 
+或者进入官网[XQuartx](https://www.xquartz.org/)下载dmg安装。
+
 2. 安装xcode
 
 直接从 `App Store` 中下载安装 或命令行安装 `xcode-select --install` 
@@ -49,10 +51,75 @@ brew install freetype
 brew install gcc@4.9
 ```
 
-4. 链接gcc编译器
+4. 链接gcc编译器(4.9版本)
 
 ```
 sudo ln -s /usr/local/Cellar/gcc@4.9/4.9.4/bin/gcc-4.9 /usr/bin/gcc
 sudo ln -s /usr/local/Cellar/gcc@4.9/4.9.4/bin/g++-4.9 /usr/bin/g++
 ```
+
+如果安装gcc版本和我的不一样，需要自行替换。
+
+5. 添加环境变量(~/.bash_profile)
+
+```
+export LFLAGS='-Xlinker -lstdc++'
+```
+
+添加执行命令生效：
+
+```
+source ~/.bash_profile
+```
+
+6. 源码修改
+
+修改openjdk/hotspot/src/share/vm/opto/loopPredicate.cpp 第775行
+```
+ assert(rng->Opcode() == Op_LoadRange || _igvn.type(rng)->is_int()->_lo >= 0, "must be");
+```
+
+ 在is_int()后在添加 ->_lo 。
+
+ 修改openjdk/jdk/src/macosx/native/sun/osxapp/ThreadUtilities.m 第一个函数
+
+ ```
+ static inline void attachCurrentThread(void** env);
+ ```
+函数名前面添加static 关键字。
+
+## 开始编译
+
+### 生成配置
+
+```
+export MACOSX_DEPLOYMENT_TARGET=10.13.2
+
+bash ./configure --with-target-bits=64 --enable-ccache --with-boot-jdk-jvmargs="-Xlint:deprecation -Xlint:unchecked"  --disable-zip-debug-info --with-freetype-include=/usr/local/Cellar/freetype/2.9/include/freetype2 --with-freetype-lib=/usr/local/Cellar/freetype/2.9/lib --with-debug-level=slowdebug 
+```
+ 其中freetype是前面安装的路径，可以进/usr/local/Cellar目录查看自己对应版本
+
+ 执行命令后我电脑输出：
+
+ ```
+ A new configuration has been successfully created in
+/Users/Jason/openjdk/jdk8u-default/build/macosx-x86_64-normal-server-slowdebug
+using configure arguments '--with-target-bits=64 --enable-ccache --with-boot-jdk-jvmargs=-Xlint:deprecation -Xlint:unchecked --disable-zip-debug-info --with-freetype-include=/usr/local/Cellar/freetype/2.9/include/freetype2 --with-freetype-lib=/usr/local/Cellar/freetype/2.9/lib --with-debug-level=slowdebug'.
+
+Configuration summary:
+* Debug level:    slowdebug
+* JDK variant:    normal
+* JVM variants:   server
+* OpenJDK target: OS: macosx, CPU architecture: x86, address length: 64
+
+Tools summary:
+* Boot JDK:       java version "1.7.0_79" Java(TM) SE Runtime Environment (build 1.7.0_79-b15) Java HotSpot(TM) 64-Bit Server VM (build 24.79-b02, mixed mode)  (at /Library/Java/JavaVirtualMachines/jdk1.7.0_79.jdk/Contents/Home)
+* C Compiler:     Apple LLVM version (clang-900.0.39.2) version 9.0.0 (at /usr/bin/clang)
+* C++ Compiler:    version Configured with: --prefix=/Applications/Xcode.app/Contents/Developer/usr --with-gxx-include-dir=/usr/include/c++/4.2.1 (at /Applications/Xcode.app/Contents/Developer/usr/bin/gcc)
+
+Build performance summary:
+* Cores to use:   4
+* Memory limit:   16384 MB
+* ccache status:  installed, but disabled (version older than 3.1.4)
+ ```
 
