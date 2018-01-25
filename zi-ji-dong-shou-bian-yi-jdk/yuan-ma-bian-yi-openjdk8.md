@@ -101,8 +101,9 @@ bash ./configure --with-target-bits=64 --enable-ccache --with-boot-jdk-jvmargs="
 
  执行命令后我电脑输出：
 
- ```
- A new configuration has been successfully created in
+```
+====================================================
+A new configuration has been successfully created in
 /Users/Jason/openjdk/jdk8u-default/build/macosx-x86_64-normal-server-slowdebug
 using configure arguments '--with-target-bits=64 --enable-ccache --with-boot-jdk-jvmargs=-Xlint:deprecation -Xlint:unchecked --disable-zip-debug-info --with-freetype-include=/usr/local/Cellar/freetype/2.9/include/freetype2 --with-freetype-lib=/usr/local/Cellar/freetype/2.9/lib --with-debug-level=slowdebug'.
 
@@ -121,5 +122,5 @@ Build performance summary:
 * Cores to use:   4
 * Memory limit:   16384 MB
 * ccache status:  installed, but disabled (version older than 3.1.4)
- ```
+```
 
