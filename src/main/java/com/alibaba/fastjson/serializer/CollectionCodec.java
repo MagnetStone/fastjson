@@ -40,6 +40,9 @@ public class CollectionCodec implements ObjectSerializer, ObjectDeserializer {
     public void write(JSONSerializer serializer, Object object, Object fieldName, Type fieldType, int features) throws IOException {
         SerializeWriter out = serializer.out;
 
+        /** 当前object是集合对象, 如果为null,
+         *  并且序列化开启WriteNullListAsEmpty特性, 输出空串[]
+         */
         if (object == null) {
             out.writeNull(SerializerFeature.WriteNullListAsEmpty);
             return;

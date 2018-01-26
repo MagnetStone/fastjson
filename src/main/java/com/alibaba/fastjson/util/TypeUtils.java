@@ -1960,7 +1960,7 @@ public class TypeUtils{
                 }
             }
             itemType = actualTypeArgument;
-        } else if(fieldType instanceof Class<?> //
+        } else if(fieldType instanceof Class<?>
                 && !(clazz = (Class<?>) fieldType).getName().startsWith("java.")){
             Type superClass = clazz.getGenericSuperclass();
             itemType = TypeUtils.getCollectionItemType(superClass);
