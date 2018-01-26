@@ -19,5 +19,5 @@
 
 ## 自己动手编译JDK
 
-* [源码编译openjdk8](zi-ji-dong-shou-bian-yi-jdk/yuan-ma-bian-yi-openjdk8.md)
+* [源码编译openjdk8](openjdk/openjdk8_macos.md)
 
