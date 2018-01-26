@@ -136,6 +136,7 @@ public class MiscCodec implements ObjectSerializer, ObjectDeserializer {
             Object objKey = entry.getKey();
             Object objVal = entry.getValue();
 
+            /** 输出map的Entry值 */
             if (objKey instanceof String) {
                 String key = (String) objKey;
 
@@ -145,9 +146,11 @@ public class MiscCodec implements ObjectSerializer, ObjectDeserializer {
                 } else {
                     out.write('{');
                     out.writeFieldName(key);
+                    /** 根据value的class类型查找序列化器并输出 */
                     serializer.write(objVal);
                 }
             } else {
+                /** 根据key、value的class类型查找序列化器并输出 */
                 out.write('{');
                 serializer.write(objKey);
                 out.write(':');

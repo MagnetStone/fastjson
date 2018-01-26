@@ -996,31 +996,241 @@ fastjson针对常用的类型已经注册了序列化实现方案：
 ### MiscCodec序列化
 
 ``` java
+    public void write(JSONSerializer serializer, Object object, Object fieldName, Type fieldType,
+                      int features) throws IOException {
+        SerializeWriter out = serializer.out;
 
+        if (object == null) {
+            out.writeNull();
+            return;
+        }
+
+        Class<?> objClass = object.getClass();
+
+        String strVal;
+        if (objClass == SimpleDateFormat.class) {
+            String pattern = ((SimpleDateFormat) object).toPattern();
+
+            /** 输出SimpleDateFormat类型的类型 */
+            if (out.isEnabled(SerializerFeature.WriteClassName)) {
+                if (object.getClass() != fieldType) {
+                    out.write('{');
+                    out.writeFieldName(JSON.DEFAULT_TYPE_KEY);
+                    serializer.write(object.getClass().getName());
+                    out.writeFieldValue(',', "val", pattern);
+                    out.write('}');
+                    return;
+                }
+            }
+
+            /** 转换SimpleDateFormat对象成pattern字符串 */
+            strVal = pattern;
+        } else if (objClass == Class.class) {
+            Class<?> clazz = (Class<?>) object;
+            /** 转换Class对象成name字符串 */
+            strVal = clazz.getName();
+        } else if (objClass == InetSocketAddress.class) {
+            InetSocketAddress address = (InetSocketAddress) object;
+
+            InetAddress inetAddress = address.getAddress();
+            /** 转换InetSocketAddress对象成地址和端口字符串 */
+            out.write('{');
+            if (inetAddress != null) {
+                out.writeFieldName("address");
+                serializer.write(inetAddress);
+                out.write(',');
+            }
+            out.writeFieldName("port");
+            out.writeInt(address.getPort());
+            out.write('}');
+            return;
+        } else if (object instanceof File) {
+            /** 转换File对象成文件路径字符串 */
+            strVal = ((File) object).getPath();
+        } else if (object instanceof InetAddress) {
+            /** 转换InetAddress对象成主机地址字符串 */
+            strVal = ((InetAddress) object).getHostAddress();
+        } else if (object instanceof TimeZone) {
+            TimeZone timeZone = (TimeZone) object;
+            /** 转换TimeZone对象成时区id字符串 */
+            strVal = timeZone.getID();
+        } else if (object instanceof Currency) {
+            Currency currency = (Currency) object;
+            /** 转换Currency对象成币别编码字符串 */
+            strVal = currency.getCurrencyCode();
+        } else if (object instanceof JSONStreamAware) {
+            JSONStreamAware aware = (JSONStreamAware) object;
+            aware.writeJSONString(out);
+            return;
+        } else if (object instanceof Iterator) {
+            Iterator<?> it = ((Iterator<?>) object);
+            /** 迭代器转换成数组码字符串 [,,,] */
+            writeIterator(serializer, out, it);
+            return;
+        } else if (object instanceof Iterable) {
+            /** 迭代器转换成数组码字符串 [,,,] */
+            Iterator<?> it = ((Iterable<?>) object).iterator();
+            writeIterator(serializer, out, it);
+            return;
+        } else if (object instanceof Map.Entry) {
+            Map.Entry entry = (Map.Entry) object;
+            Object objKey = entry.getKey();
+            Object objVal = entry.getValue();
+
+            /** 输出map的Entry值 */
+            if (objKey instanceof String) {
+                String key = (String) objKey;
+
+                if (objVal instanceof String) {
+                    String value = (String) objVal;
+                    out.writeFieldValueStringWithDoubleQuoteCheck('{', key, value);
+                } else {
+                    out.write('{');
+                    out.writeFieldName(key);
+                    /** 根据value的class类型查找序列化器并输出 */
+                    serializer.write(objVal);
+                }
+            } else {
+                /** 根据key、value的class类型查找序列化器并输出 */
+                out.write('{');
+                serializer.write(objKey);
+                out.write(':');
+                serializer.write(objVal);
+            }
+            out.write('}');
+            return;
+        } else if (object.getClass().getName().equals("net.sf.json.JSONNull")) {
+            out.writeNull();
+            return;
+        } else {
+            throw new JSONException("not support class : " + objClass);
+        }
+
+        out.writeString(strVal);
+    }
 ```
+
+`MiscCodec`序列化的主要思想是吧JDK内部常用的对象简化处理，比如TimeZone只保留id输出，极大地降低了输出字节大小。
 
 ### AppendableSerializer序列化
 
 ``` java
+    public void write(JSONSerializer serializer, Object object, Object fieldName, Type fieldType, int features) throws IOException {
 
+        /** 当前object实现了Appendable接口, 如果为null,
+         *  并且序列化开启WriteNullStringAsEmpty特性, 输出空串""
+         */
+        if (object == null) {
+            SerializeWriter out = serializer.out;
+            out.writeNull(SerializerFeature.WriteNullStringAsEmpty);
+            return;
+        }
+
+        /** 输出对象toString结果作为json串 */
+        serializer.write(object.toString());
+    }
 ```
 
 ### ToStringSerializer序列化
 
 ``` java
+    public void write(JSONSerializer serializer, Object object, Object fieldName, Type fieldType,
+                      int features) throws IOException {
+        SerializeWriter out = serializer.out;
 
+        /** 如果为null, 输出空串"null" */
+        if (object == null) {
+            out.writeNull();
+            return;
+        }
+
+        /** 输出对象toString结果作为json串 */
+        String strVal = object.toString();
+        out.writeString(strVal);
+    }
 ```
 
 ### AtomicCodec序列化
 
 ``` java
+    public void write(JSONSerializer serializer, Object object, Object fieldName, Type fieldType, int features) throws IOException {
+        SerializeWriter out = serializer.out;
+        
+        if (object instanceof AtomicInteger) {
+            AtomicInteger val = (AtomicInteger) object;
+            /** 获取整数输出 */
+            out.writeInt(val.get());
+            return;
+        }
+        
+        if (object instanceof AtomicLong) {
+            AtomicLong val = (AtomicLong) object;
+            /** 获取长整数输出 */
+            out.writeLong(val.get());
+            return;
+        }
+        
+        if (object instanceof AtomicBoolean) {
+            AtomicBoolean val = (AtomicBoolean) object;
+            /** 获取boolean值输出 */
+            out.append(val.get() ? "true" : "false");
+            return;
+        }
 
+        /** 当前object是原子数组类型, 如果为null，输出[] */
+        if (object == null) {
+            out.writeNull(SerializerFeature.WriteNullListAsEmpty);
+            return;
+        }
+
+        /** 遍历AtomicIntegerArray，输出int数组类型 */
+        if (object instanceof AtomicIntegerArray) {
+            AtomicIntegerArray array = (AtomicIntegerArray) object;
+            int len = array.length();
+            out.write('[');
+            for (int i = 0; i < len; ++i) {
+                int val = array.get(i);
+                if (i != 0) {
+                    out.write(',');
+                }
+                out.writeInt(val);
+            }
+            out.write(']');
+            
+            return;
+        }
+
+        /** 遍历AtomicLongArray，输出long数组类型 */
+        AtomicLongArray array = (AtomicLongArray) object;
+        int len = array.length();
+        out.write('[');
+        for (int i = 0; i < len; ++i) {
+            long val = array.get(i);
+            if (i != 0) {
+                out.write(',');
+            }
+            out.writeLong(val);
+        }
+        out.write(']');
+    }
 ```
 
 ### ReferenceCodec序列化
 
 ``` java
-
+    public void write(JSONSerializer serializer, Object object, Object fieldName, Type fieldType, int features) throws IOException {
+        Object item;
+        /** 当前object是Reference类型,
+         *  调用get()查找对应的class序列化器输出
+         */
+        if (object instanceof AtomicReference) {
+            AtomicReference val = (AtomicReference) object;
+            item = val.get();
+        } else {
+            item = ((Reference) object).get();
+        }
+        serializer.write(item);
+    }
 ```
 
 ### CollectionCodec序列化

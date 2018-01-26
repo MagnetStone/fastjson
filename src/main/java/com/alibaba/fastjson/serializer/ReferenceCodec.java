@@ -37,6 +37,9 @@ public class ReferenceCodec implements ObjectSerializer, ObjectDeserializer {
     @SuppressWarnings("rawtypes")
     public void write(JSONSerializer serializer, Object object, Object fieldName, Type fieldType, int features) throws IOException {
         Object item;
+        /** 当前object是Reference类型,
+         *  调用get()查找对应的class序列化器输出
+         */
         if (object instanceof AtomicReference) {
             AtomicReference val = (AtomicReference) object;
             item = val.get();

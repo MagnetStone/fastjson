@@ -40,27 +40,32 @@ public class AtomicCodec implements ObjectSerializer, ObjectDeserializer {
         
         if (object instanceof AtomicInteger) {
             AtomicInteger val = (AtomicInteger) object;
+            /** 获取整数输出 */
             out.writeInt(val.get());
             return;
         }
         
         if (object instanceof AtomicLong) {
             AtomicLong val = (AtomicLong) object;
+            /** 获取长整数输出 */
             out.writeLong(val.get());
             return;
         }
         
         if (object instanceof AtomicBoolean) {
             AtomicBoolean val = (AtomicBoolean) object;
+            /** 获取boolean值输出 */
             out.append(val.get() ? "true" : "false");
             return;
         }
 
+        /** 当前object是原子数组类型, 如果为null，输出[] */
         if (object == null) {
             out.writeNull(SerializerFeature.WriteNullListAsEmpty);
             return;
         }
 
+        /** 遍历AtomicIntegerArray，输出int数组类型 */
         if (object instanceof AtomicIntegerArray) {
             AtomicIntegerArray array = (AtomicIntegerArray) object;
             int len = array.length();
@@ -76,7 +81,8 @@ public class AtomicCodec implements ObjectSerializer, ObjectDeserializer {
             
             return;
         }
-        
+
+        /** 遍历AtomicLongArray，输出long数组类型 */
         AtomicLongArray array = (AtomicLongArray) object;
         int len = array.length();
         out.write('[');

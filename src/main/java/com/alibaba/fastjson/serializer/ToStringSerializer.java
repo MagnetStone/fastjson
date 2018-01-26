@@ -12,11 +12,13 @@ public class ToStringSerializer implements ObjectSerializer {
                       int features) throws IOException {
         SerializeWriter out = serializer.out;
 
+        /** 如果为null, 输出空串"null" */
         if (object == null) {
             out.writeNull();
             return;
         }
 
+        /** 输出对象toString结果作为json串 */
         String strVal = object.toString();
         out.writeString(strVal);
     }
