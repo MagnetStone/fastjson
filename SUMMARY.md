@@ -6,10 +6,10 @@
 
 ## 序列化源码解析
 
-* [序列化基础类型解析](xu-lie-hua-yuan-ma-jie-xi/xu-lie-hua-ji-chu-lei-xing-jie-xi.md)
-* [序列化字节和字符串解析](xu-lie-hua-yuan-ma-jie-xi/xu-lie-hua-zi-jie-he-zi-fu-chuan-jie-xi.md)
-* [序列化字段属性键值对](xu-lie-hua-yuan-ma-jie-xi/xu-lie-hua-zi-duan-shu-xing-jian-zhi-dui.md)
-* [json序列化实现解析](xu-lie-hua-yuan-ma-jie-xi/jsonxu-lie-hua-shi-xian-jie-xi.md)
+* [序列化基础类型解析](serializer/serializerWriter_part1.md)
+* [序列化字节和字符串解析](serializer/serializerWriter_part2.md)
+* [序列化字段属性键值对](serializer/serializerWriter_part3.md)
+* [json序列化实现解析](serializer/json_part1.md)
 
 ## 词法和语法解析实现
 
