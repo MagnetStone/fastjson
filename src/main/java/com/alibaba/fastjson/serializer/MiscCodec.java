@@ -70,6 +70,7 @@ public class MiscCodec implements ObjectSerializer, ObjectDeserializer {
         if (objClass == SimpleDateFormat.class) {
             String pattern = ((SimpleDateFormat) object).toPattern();
 
+            /** 输出SimpleDateFormat类型的类型 */
             if (out.isEnabled(SerializerFeature.WriteClassName)) {
                 if (object.getClass() != fieldType) {
                     out.write('{');
@@ -81,15 +82,17 @@ public class MiscCodec implements ObjectSerializer, ObjectDeserializer {
                 }
             }
 
+            /** 转换SimpleDateFormat对象成pattern字符串 */
             strVal = pattern;
         } else if (objClass == Class.class) {
             Class<?> clazz = (Class<?>) object;
+            /** 转换Class对象成name字符串 */
             strVal = clazz.getName();
         } else if (objClass == InetSocketAddress.class) {
             InetSocketAddress address = (InetSocketAddress) object;
 
             InetAddress inetAddress = address.getAddress();
-
+            /** 转换InetSocketAddress对象成地址和端口字符串 */
             out.write('{');
             if (inetAddress != null) {
                 out.writeFieldName("address");
@@ -101,14 +104,18 @@ public class MiscCodec implements ObjectSerializer, ObjectDeserializer {
             out.write('}');
             return;
         } else if (object instanceof File) {
+            /** 转换File对象成文件路径字符串 */
             strVal = ((File) object).getPath();
         } else if (object instanceof InetAddress) {
+            /** 转换InetAddress对象成主机地址字符串 */
             strVal = ((InetAddress) object).getHostAddress();
         } else if (object instanceof TimeZone) {
             TimeZone timeZone = (TimeZone) object;
+            /** 转换TimeZone对象成时区id字符串 */
             strVal = timeZone.getID();
         } else if (object instanceof Currency) {
             Currency currency = (Currency) object;
+            /** 转换Currency对象成币别编码字符串 */
             strVal = currency.getCurrencyCode();
         } else if (object instanceof JSONStreamAware) {
             JSONStreamAware aware = (JSONStreamAware) object;
@@ -116,9 +123,11 @@ public class MiscCodec implements ObjectSerializer, ObjectDeserializer {
             return;
         } else if (object instanceof Iterator) {
             Iterator<?> it = ((Iterator<?>) object);
+            /** 迭代器转换成数组码字符串 [,,,] */
             writeIterator(serializer, out, it);
             return;
         } else if (object instanceof Iterable) {
+            /** 迭代器转换成数组码字符串 [,,,] */
             Iterator<?> it = ((Iterable<?>) object).iterator();
             writeIterator(serializer, out, it);
             return;

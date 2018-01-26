@@ -45,6 +45,9 @@ public class ObjectArrayCodec implements ObjectSerializer, ObjectDeserializer {
 
         Object[] array = (Object[]) object;
 
+        /** 当前object是数组对象, 如果为null,
+         *  并且序列化开启WriteNullListAsEmpty特性, 输出空串[]
+         */
         if (object == null) {
             out.writeNull(SerializerFeature.WriteNullListAsEmpty);
             return;
@@ -54,6 +57,7 @@ public class ObjectArrayCodec implements ObjectSerializer, ObjectDeserializer {
 
         int end = size - 1;
 
+        /** 当前object是数组对象, 如果为没有元素, 输出空串[] */
         if (end == -1) {
             out.append("[]");
             return;
@@ -67,6 +71,10 @@ public class ObjectArrayCodec implements ObjectSerializer, ObjectDeserializer {
             ObjectSerializer preWriter = null;
             out.append('[');
 
+            /**
+             *  如果开启json格式化，循环输出数组对象，
+             *  会根据数组元素class类型查找序列化实例输出
+             */
             if (out.isEnabled(SerializerFeature.PrettyFormat)) {
                 serializer.incrementIndent();
                 serializer.println();
@@ -94,12 +102,13 @@ public class ObjectArrayCodec implements ObjectSerializer, ObjectDeserializer {
                     } else {
                         Class<?> clazz = item.getClass();
 
+                        /** 如果当前序列化元素和前一次class类型相同，避免再一次class类型查找序列化实例 */
                         if (clazz == preClazz) {
                             preWriter.write(serializer, item, null, null, 0);
                         } else {
                             preClazz = clazz;
+                            /** 查找数组元素class类型的序列化器 序列化item */
                             preWriter = serializer.getObjectWriter(clazz);
-
                             preWriter.write(serializer, item, null, null, 0);
                         }
                     }

@@ -896,8 +896,102 @@ fastjson针对常用的类型已经注册了序列化实现方案：
 ### ObjectArrayCodec序列化
 
 ``` java
+    public final void write(JSONSerializer serializer, Object object, Object fieldName, Type fieldType, int features)
+                                                                                                       throws IOException {
+        SerializeWriter out = serializer.out;
 
+        Object[] array = (Object[]) object;
+
+        /** 当前object是数组对象, 如果为null,
+         *  并且序列化开启WriteNullListAsEmpty特性, 输出空串[]
+         */
+        if (object == null) {
+            out.writeNull(SerializerFeature.WriteNullListAsEmpty);
+            return;
+        }
+
+        int size = array.length;
+
+        int end = size - 1;
+
+        /** 当前object是数组对象, 如果为没有元素, 输出空串[] */
+        if (end == -1) {
+            out.append("[]");
+            return;
+        }
+
+        SerialContext context = serializer.context;
+        serializer.setContext(context, object, fieldName, 0);
+
+        try {
+            Class<?> preClazz = null;
+            ObjectSerializer preWriter = null;
+            out.append('[');
+
+            /**
+             *  如果开启json格式化，循环输出数组对象，
+             *  会根据数组元素class类型查找序列化实例输出
+             */
+            if (out.isEnabled(SerializerFeature.PrettyFormat)) {
+                serializer.incrementIndent();
+                serializer.println();
+                for (int i = 0; i < size; ++i) {
+                    if (i != 0) {
+                        out.write(',');
+                        serializer.println();
+                    }
+                    serializer.write(array[i]);
+                }
+                serializer.decrementIdent();
+                serializer.println();
+                out.write(']');
+                return;
+            }
+
+            for (int i = 0; i < end; ++i) {
+                Object item = array[i];
+
+                if (item == null) {
+                    out.append("null,");
+                } else {
+                    if (serializer.containsReference(item)) {
+                        serializer.writeReference(item);
+                    } else {
+                        Class<?> clazz = item.getClass();
+
+                        /** 如果当前序列化元素和前一次class类型相同，避免再一次class类型查找序列化实例 */
+                        if (clazz == preClazz) {
+                            preWriter.write(serializer, item, null, null, 0);
+                        } else {
+                            preClazz = clazz;
+                            /** 查找数组元素class类型的序列化器 序列化item */
+                            preWriter = serializer.getObjectWriter(clazz);
+                            preWriter.write(serializer, item, null, null, 0);
+                        }
+                    }
+                    out.append(',');
+                }
+            }
+
+            Object item = array[end];
+
+            if (item == null) {
+                out.append("null]");
+            } else {
+                if (serializer.containsReference(item)) {
+                    serializer.writeReference(item);
+                } else {
+                    serializer.writeWithFieldName(item, end);
+                }
+                out.append(']');
+            }
+        } finally {
+            serializer.context = context;
+        }
+    }
 ```
+
+`ObjectArrayCodec`序列化主要判断是否开启格式化输出json，如果是输出添加适当的缩进。针对数组元素不一样会根据元素class类型查找具体的序列化器输出，这里优化了如果元素相同的元素避免冗余的查找序列化器。
 
 ### MiscCodec序列化
 
