@@ -1236,7 +1236,85 @@ fastjson针对常用的类型已经注册了序列化实现方案：
 ### CollectionCodec序列化
 
 ``` java
+    public void write(JSONSerializer serializer, Object object, Object fieldName, Type fieldType, int features) throws IOException {
+        SerializeWriter out = serializer.out;
 
+        /** 当前object是集合对象, 如果为null,
+         *  并且序列化开启WriteNullListAsEmpty特性, 输出空串[]
+         */
+        if (object == null) {
+            out.writeNull(SerializerFeature.WriteNullListAsEmpty);
+            return;
+        }
+
+        Type elementType = null;
+        if (out.isEnabled(SerializerFeature.WriteClassName)
+                || SerializerFeature.isEnabled(features, SerializerFeature.WriteClassName))
+        {
+            /** 获取字段泛型类型 */
+            elementType = TypeUtils.getCollectionItemType(fieldType);
+        }
+
+        Collection<?> collection = (Collection<?>) object;
+
+        SerialContext context = serializer.context;
+        serializer.setContext(context, object, fieldName, 0);
+
+        if (out.isEnabled(SerializerFeature.WriteClassName)) {
+            if (HashSet.class == collection.getClass()) {
+                out.append("Set");
+            } else if (TreeSet.class == collection.getClass()) {
+                out.append("TreeSet");
+            }
+        }
+
+        try {
+            int i = 0;
+            out.append('[');
+            for (Object item : collection) {
+
+                if (i++ != 0) {
+                    out.append(',');
+                }
+
+                if (item == null) {
+                    out.writeNull();
+                    continue;
+                }
+
+                Class<?> clazz = item.getClass();
+
+                /** 获取整形类型值，输出 */
+                if (clazz == Integer.class) {
+                    out.writeInt(((Integer) item).intValue());
+                    continue;
+                }
+
+                /** 获取整形长类型值，输出并添加L标识(如果开启WriteClassName特性) */
+                if (clazz == Long.class) {
+                    out.writeLong(((Long) item).longValue());
+
+                    if (out.isEnabled(SerializerFeature.WriteClassName)) {
+                        out.write('L');
+                    }
+                    continue;
+                }
+
+                /** 根据集合类型查找序列化实例处理，JavaBeanSerializer后面单独分析 */
+                ObjectSerializer itemSerializer = serializer.getObjectWriter(clazz);
+                if (SerializerFeature.isEnabled(features, SerializerFeature.WriteClassName)
+                        && itemSerializer instanceof JavaBeanSerializer) {
+                    JavaBeanSerializer javaBeanSerializer = (JavaBeanSerializer) itemSerializer;
+                    javaBeanSerializer.writeNoneASM(serializer, item, i - 1, elementType, features);
+                } else {
+                    itemSerializer.write(serializer, item, i - 1, elementType, features);
+                }
+            }
+            out.append(']');
+        } finally {
+            serializer.context = context;
+        }
+    }
 ```
 
 ### MapSerializer序列化
