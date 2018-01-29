@@ -1950,6 +1950,7 @@ public class TypeUtils{
     public static Type getCollectionItemType(Type fieldType){
         Type itemType = null;
         Class<?> clazz;
+        /** 获取字段的泛型类型 */
         if(fieldType instanceof ParameterizedType){
             Type actualTypeArgument = ((ParameterizedType) fieldType).getActualTypeArguments()[0];
             if(actualTypeArgument instanceof WildcardType){
@@ -1960,6 +1961,7 @@ public class TypeUtils{
                 }
             }
             itemType = actualTypeArgument;
+            /** 如果字段类型不是jdk类型，递归查找 */
         } else if(fieldType instanceof Class<?>
                 && !(clazz = (Class<?>) fieldType).getName().startsWith("java.")){
             Type superClass = clazz.getGenericSuperclass();
