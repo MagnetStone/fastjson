@@ -93,8 +93,10 @@ public class SerializeConfig {
     }
 
     public final ObjectSerializer createJavaBeanSerializer(Class<?> clazz) {
+	    /** 封装序列化clazz Bean，包含字段类型等等 */
 	    SerializeBeanInfo beanInfo = TypeUtils.buildBeanInfo(clazz, null, propertyNamingStrategy, fieldBased);
 	    if (beanInfo.fields.length == 0 && Iterable.class.isAssignableFrom(clazz)) {
+	        /** 如果clazz是迭代器类型，使用MiscCodec序列化，会被序列化成数组 [,,,] */
 	        return MiscCodec.instance;
 	    }
 
@@ -110,6 +112,7 @@ public class SerializeConfig {
 	        Class<?> serializerClass = jsonType.serializer();
 	        if (serializerClass != Void.class) {
 	            try {
+	                /** 实例化注解指定的类型 */
                     Object seralizer = serializerClass.newInstance();
                     if (seralizer instanceof ObjectSerializer) {
                         return (ObjectSerializer) seralizer;
@@ -118,11 +121,14 @@ public class SerializeConfig {
                     // skip
                 }
 	        }
-	        
+
+	        /** 注解显示指定不使用asm */
 	        if (jsonType.asm() == false) {
 	            asm = false;
 	        }
 
+            /** 注解显示开启WriteNonStringValueAsString、WriteEnumUsingToString
+             * 和NotWriteDefaultValue不使用asm */
             for (SerializerFeature feature : jsonType.serialzeFeatures()) {
                 if (SerializerFeature.WriteNonStringValueAsString == feature //
                         || SerializerFeature.WriteEnumUsingToString == feature //
@@ -134,6 +140,7 @@ public class SerializeConfig {
         }
 
 	    Class<?> clazz = beanInfo.beanType;
+	    /** 非public类型，直接使用JavaBeanSerializer序列化 */
 		if (!Modifier.isPublic(beanInfo.beanType.getModifiers())) {
 			return new JavaBeanSerializer(beanInfo);
 		}
@@ -211,6 +218,7 @@ public class SerializeConfig {
 		
 		if (asm) {
 			try {
+			    /** 使用asm字节码库序列化，后面单独列一个章节分析asm源码 */
                 ObjectSerializer asmSerializer = createASMSerializer(beanInfo);
                 if (asmSerializer != null) {
                     return asmSerializer;
@@ -227,6 +235,7 @@ public class SerializeConfig {
 			}
 		}
 
+		/** 默认使用JavaBeanSerializer 序列化类 */
 		return new JavaBeanSerializer(beanInfo);
 	}
 

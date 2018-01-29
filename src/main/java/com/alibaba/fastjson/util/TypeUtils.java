@@ -1268,6 +1268,7 @@ public class TypeUtils{
             }
 
             features = SerializerFeature.of(jsonType.serialzeFeatures());
+            /** 查找类型父类是否包含JSONType注解 */
             for(Class<?> supperClass = beanType.getSuperclass()
                 ; supperClass != null && supperClass != Object.class
                     ; supperClass = supperClass.getSuperclass()){
@@ -1281,6 +1282,7 @@ public class TypeUtils{
                 }
             }
 
+            /** 查找类型实现的接口是否包含JSONType注解 */
             for(Class<?> interfaceClass : beanType.getInterfaces()){
                 JSONType superJsonType = TypeUtils.getAnnotation(interfaceClass,JSONType.class);
                 if(superJsonType != null){
@@ -1297,17 +1299,20 @@ public class TypeUtils{
         } else{
             features = 0;
         }
-        // fieldName,field ，先生成fieldName的快照，减少之后的findField的轮询
+        /** fieldName,field ，先生成fieldName的快照，减少之后的findField的轮询 */
         Map<String,Field> fieldCacheMap = new HashMap<String,Field>();
         ParserConfig.parserAllFieldToCache(beanType, fieldCacheMap);
         List<FieldInfo> fieldInfoList = fieldBased
-                ? computeGettersWithFieldBase(beanType, aliasMap, false, propertyNamingStrategy) //
+                ? computeGettersWithFieldBase(beanType, aliasMap, false, propertyNamingStrategy)
                 : computeGetters(beanType, jsonType, aliasMap, fieldCacheMap, false, propertyNamingStrategy);
         FieldInfo[] fields = new FieldInfo[fieldInfoList.size()];
         fieldInfoList.toArray(fields);
         FieldInfo[] sortedFields;
         List<FieldInfo> sortedFieldList;
         if(orders != null && orders.length != 0){
+            /** computeGettersWithFieldBase基于字段解析,
+             *  computeGetters基于方法解析+字段解析
+             */
             sortedFieldList = fieldBased
                     ? computeGettersWithFieldBase(beanType, aliasMap, true, propertyNamingStrategy) //
                     : computeGetters(beanType, jsonType, aliasMap, fieldCacheMap, true, propertyNamingStrategy);
@@ -1320,19 +1325,22 @@ public class TypeUtils{
         if(Arrays.equals(sortedFields, fields)){
             sortedFields = fields;
         }
+        /** 封装对象的字段信息和方法信息 */
         return new SerializeBeanInfo(beanType, jsonType, typeName, typeKey, features, fields, sortedFields);
     }
 
     public static List<FieldInfo> computeGettersWithFieldBase(
-            Class<?> clazz, //
-            Map<String,String> aliasMap, //
-            boolean sorted, //
+            Class<?> clazz,
+            Map<String,String> aliasMap,
+            boolean sorted,
             PropertyNamingStrategy propertyNamingStrategy){
         Map<String,FieldInfo> fieldInfoMap = new LinkedHashMap<String,FieldInfo>();
         for(Class<?> currentClass = clazz; currentClass != null; currentClass = currentClass.getSuperclass()){
             Field[] fields = currentClass.getDeclaredFields();
+            /** 遍历clazz所有字段，把字段信息封装成bean存储到fieldInfoMap中*/
             computeFields(currentClass, aliasMap, propertyNamingStrategy, fieldInfoMap, fields);
         }
+        /** 主要处理字段有序的逻辑 */
         return getFieldInfos(clazz, sorted, fieldInfoMap);
     }
 
@@ -1362,19 +1370,26 @@ public class TypeUtils{
         String[] paramNames = null;
         short[] paramNameMapping = null;
         Method[] methods = clazz.getMethods();
+        /** 循环处理序列化类型声明的方法getter */
         for(Method method : methods){
             String methodName = method.getName();
             int ordinal = 0, serialzeFeatures = 0, parserFeatures = 0;
             String label = null;
+            /** 忽略静态方法 */
             if(Modifier.isStatic(method.getModifiers())){
                 continue;
             }
+            /** 忽略没有返回值方法 */
             if(method.getReturnType().equals(Void.TYPE)){
                 continue;
             }
+
+            /** 忽略方法有参数的方法 */
             if(method.getParameterTypes().length != 0){
                 continue;
             }
+
+            /** 忽略返回ClassLoader的方法 */
             if(method.getReturnType() == ClassLoader.class){
                 continue;
             }
@@ -1397,6 +1412,7 @@ public class TypeUtils{
             Boolean fieldAnnotationAndNameExists = false;
             JSONField annotation = method.getAnnotation(JSONField.class);
             if(annotation == null){
+                /** 获取父类(包括抽象父类和接口)的注解，代码内添加了详细解释 */
                 annotation = getSuperMethodAnnotation(clazz, method);
             }
             if(annotation == null && kotlin){
@@ -1452,6 +1468,7 @@ public class TypeUtils{
                 }
             }
             if(annotation != null){
+                /** 忽略注解字段明确不序列化的字段 */
                 if(!annotation.serialize()){
                     continue;
                 }
@@ -1466,6 +1483,7 @@ public class TypeUtils{
                             continue;
                         }
                     }
+                    /** 封装解析类型的方法和类型 */
                     FieldInfo fieldInfo = new FieldInfo(propertyName, method, null, clazz, null, ordinal,
                             serialzeFeatures, parserFeatures, annotation, null, label);
                     fieldInfoMap.put(propertyName, fieldInfo);
@@ -1476,6 +1494,8 @@ public class TypeUtils{
                 }
             }
             if(methodName.startsWith("get")){
+
+                /** 忽略方法名字小于4 */
                 if(methodName.length() < 4){
                     continue;
                 }
@@ -1505,6 +1525,7 @@ public class TypeUtils{
                 } else{
                     continue;
                 }
+                /** 同时设置了includes 和 ignores 属性, includes优先，检查是否忽略当前字段*/
                 boolean ignore = isJSONTypeIgnore(clazz, propertyName);
                 if(ignore){
                     continue;
@@ -1522,6 +1543,7 @@ public class TypeUtils{
                 if(field != null){
                     fieldAnnotation = field.getAnnotation(JSONField.class);
                     if(fieldAnnotation != null){
+                        /** 忽略注解字段明确不序列化的字段 */
                         if(!fieldAnnotation.serialize()){
                             continue;
                         }
@@ -1638,6 +1660,7 @@ public class TypeUtils{
     private static List<FieldInfo> getFieldInfos(Class<?> clazz, boolean sorted, Map<String,FieldInfo> fieldInfoMap){
         List<FieldInfo> fieldInfoList = new ArrayList<FieldInfo>();
         String[] orders = null;
+        /** 查找clazz上面的JSONType注解 */
         JSONType annotation = TypeUtils.getAnnotation(clazz,JSONType.class);
         if(annotation != null){
             orders = annotation.orders();
@@ -1648,6 +1671,7 @@ public class TypeUtils{
                 map.put(field.name, field);
             }
             int i = 0;
+            /** 先把有序字段从map移除，并添加到有序列表fieldInfoList中 */
             for(String item : orders){
                 FieldInfo field = map.get(item);
                 if(field != null){
@@ -1655,10 +1679,12 @@ public class TypeUtils{
                     map.remove(item);
                 }
             }
+            /** 将map剩余元素追加到有序列表末尾 */
             for(FieldInfo field : map.values()){
                 fieldInfoList.add(field);
             }
         } else{
+            /** 如果注解没有要求顺序，全部添加map元素 */
             for(FieldInfo fieldInfo : fieldInfoMap.values()){
                 fieldInfoList.add(fieldInfo);
             }
@@ -1670,27 +1696,32 @@ public class TypeUtils{
     }
 
     private static void computeFields(
-            Class<?> clazz, //
-            Map<String,String> aliasMap, //
-            PropertyNamingStrategy propertyNamingStrategy, //
-            Map<String,FieldInfo> fieldInfoMap, //
+            Class<?> clazz,
+            Map<String,String> aliasMap,
+            PropertyNamingStrategy propertyNamingStrategy,
+            Map<String,FieldInfo> fieldInfoMap,
             Field[] fields){
         for(Field field : fields){
+            /** 忽略静态字段类型 */
             if(Modifier.isStatic(field.getModifiers())){
                 continue;
             }
+            /** 查找当前字段是否包含JSONField注解 */
             JSONField fieldAnnotation = field.getAnnotation(JSONField.class);
             int ordinal = 0, serialzeFeatures = 0, parserFeatures = 0;
             String propertyName = field.getName();
             String label = null;
             if(fieldAnnotation != null){
+                /** 忽略不序列化的字段 */
                 if(!fieldAnnotation.serialize()){
                     continue;
                 }
+                /** 获取字段序列化顺序 */
                 ordinal = fieldAnnotation.ordinal();
                 serialzeFeatures = SerializerFeature.of(fieldAnnotation.serialzeFeatures());
                 parserFeatures = Feature.of(fieldAnnotation.parseFeatures());
                 if(fieldAnnotation.name().length() != 0){
+                    /** 属性名字采用JSONField注解上面的name */
                     propertyName = fieldAnnotation.name();
                 }
                 if(fieldAnnotation.label().length() != 0){
@@ -1698,14 +1729,18 @@ public class TypeUtils{
                 }
             }
             if(aliasMap != null){
+                /** 查找是否包含属性别名的字段 */
                 propertyName = aliasMap.get(propertyName);
                 if(propertyName == null){
                     continue;
                 }
             }
             if(propertyNamingStrategy != null){
+                /** 属性字段命名规则转换 */
                 propertyName = propertyNamingStrategy.translate(propertyName);
             }
+
+            /** 封装解析类型的字段和类型 */
             if(!fieldInfoMap.containsKey(propertyName)){
                 FieldInfo fieldInfo = new FieldInfo(propertyName, null, field, clazz, null, ordinal, serialzeFeatures, parserFeatures,
                         null, fieldAnnotation, label);
@@ -1729,16 +1764,21 @@ public class TypeUtils{
         Class<?>[] interfaces = clazz.getInterfaces();
         if(interfaces.length > 0){
             Class<?>[] types = method.getParameterTypes();
+            /** 循环处理序列化类型实现的接口 */
             for(Class<?> interfaceClass : interfaces){
                 for(Method interfaceMethod : interfaceClass.getMethods()){
                     Class<?>[] interfaceTypes = interfaceMethod.getParameterTypes();
+                    /** 忽略接口方法和当前方法参数长度不一致 */
                     if(interfaceTypes.length != types.length){
                         continue;
                     }
+
+                    /** 忽略接口方法和当前方法名字不一致 */
                     if(!interfaceMethod.getName().equals(method.getName())){
                         continue;
                     }
                     boolean match = true;
+                    /** 忽略接口方法和当前方法参数不一致 */
                     for(int i = 0; i < types.length; ++i){
                         if(!interfaceTypes[i].equals(types[i])){
                             match = false;
@@ -1759,6 +1799,8 @@ public class TypeUtils{
         if(superClass == null){
             return null;
         }
+
+        /** 重试父类是抽象类的相同逻辑 */
         if(Modifier.isAbstract(superClass.getModifiers())){
             Class<?>[] types = method.getParameterTypes();
             for(Method interfaceMethod : superClass.getMethods()){

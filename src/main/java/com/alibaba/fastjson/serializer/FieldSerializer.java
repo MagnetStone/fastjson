@@ -92,6 +92,7 @@ public class FieldSerializer implements Comparable<FieldSerializer> {
                 format = null;
             }
 
+            /** 字段的注解优先级高于类上面的注解 */
             for (SerializerFeature feature : annotation.serialzeFeatures()) {
                 if (feature == SerializerFeature.WriteEnumUsingToString) {
                     writeEnumUsingToString = true;
@@ -160,6 +161,7 @@ public class FieldSerializer implements Comparable<FieldSerializer> {
         if (runtimeInfo == null) {
 
             Class<?> runtimeFieldClass;
+            /** 获取字段的类型 */
             if (propertyValue == null) {
                 runtimeFieldClass = this.fieldInfo.fieldClass;
             } else {
@@ -169,10 +171,12 @@ public class FieldSerializer implements Comparable<FieldSerializer> {
             ObjectSerializer fieldSerializer = null;
             JSONField fieldAnnotation = fieldInfo.getAnnotation();
 
+            /** 创建并初始化字段指定序列化类型 */
             if (fieldAnnotation != null && fieldAnnotation.serializeUsing() != Void.class) {
                 fieldSerializer = (ObjectSerializer) fieldAnnotation.serializeUsing().newInstance();
                 serializeUsing = true;
             } else {
+                /** 针对format和primitive类型创建序列化类型 */
                 if (format != null) {
                     if (runtimeFieldClass == double.class || runtimeFieldClass == Double.class) {
                         fieldSerializer = new DoubleSerializer(format);
@@ -182,10 +186,12 @@ public class FieldSerializer implements Comparable<FieldSerializer> {
                 }
 
                 if (fieldSerializer == null) {
+                    /** 根据属性值class类型查找序列化类型 */
                     fieldSerializer = serializer.getObjectWriter(runtimeFieldClass);
                 }
             }
 
+            /** 封装序列化类型和属性值的类型 */
             runtimeInfo = new RuntimeSerializerInfo(fieldSerializer, runtimeFieldClass);
         }
         
@@ -203,6 +209,7 @@ public class FieldSerializer implements Comparable<FieldSerializer> {
                 return;
             }
 
+            /** 针对属性值为null的情况处理 */
             Class<?> runtimeFieldClass = runtimeInfo.runtimeFieldClass;
 
             if (Number.class.isAssignableFrom(runtimeFieldClass)) {
@@ -227,17 +234,20 @@ public class FieldSerializer implements Comparable<FieldSerializer> {
                 return;
             }
 
+            /** 序列化null对象 */
             fieldSerializer.write(serializer, null, fieldInfo.name, fieldInfo.fieldType, fieldFeatures);
             return;
         }
 
         if (fieldInfo.isEnum) {
             if (writeEnumUsingName) {
+                /** 使用枚举名字序列化 */
                 serializer.out.writeString(((Enum<?>) propertyValue).name());
                 return;
             }
 
             if (writeEnumUsingToString) {
+                /** 使用枚举toString字符串序列化 */
                 serializer.out.writeString(((Enum<?>) propertyValue).toString());
                 return;
             }
@@ -246,6 +256,7 @@ public class FieldSerializer implements Comparable<FieldSerializer> {
         Class<?> valueClass = propertyValue.getClass();
         ObjectSerializer valueSerializer;
         if (valueClass == runtimeInfo.runtimeFieldClass || serializeUsing) {
+            /** 使用序列化注解指定的序列化类型 */
             valueSerializer = runtimeInfo.fieldSerializer;
         } else {
             valueSerializer = serializer.getObjectWriter(valueClass);
@@ -260,6 +271,7 @@ public class FieldSerializer implements Comparable<FieldSerializer> {
             return;
         }
 
+        /** 特殊检查是否是具体类型序列化JavaBeanSerializer、 MapSerializer */
         if (fieldInfo.unwrapped) {
             if (valueSerializer instanceof JavaBeanSerializer) {
                 JavaBeanSerializer javaBeanSerializer = (JavaBeanSerializer) valueSerializer;
@@ -274,6 +286,7 @@ public class FieldSerializer implements Comparable<FieldSerializer> {
             }
         }
 
+        /** 针对字段类型和属性值类型不一致退化成使用JavaBeanSerializer */
         if ((features & SerializerFeature.WriteClassName.mask) != 0
                 && valueClass != fieldInfo.fieldClass
                 && JavaBeanSerializer.class.isInstance(valueSerializer)) {
@@ -281,6 +294,7 @@ public class FieldSerializer implements Comparable<FieldSerializer> {
             return;
         }
 
+        /** 使用值序列化类型处理 */
         valueSerializer.write(serializer, propertyValue, fieldInfo.name, fieldInfo.fieldType, fieldFeatures);
     }
 

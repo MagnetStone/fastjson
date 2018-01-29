@@ -53,6 +53,7 @@ public class DateCodec extends AbstractDateDeserializer implements ObjectSeriali
         if (object instanceof Date) {
             date = (Date) object;
         } else {
+            /** 主要针对Calendar、Oracle中的日期类型做转换 */
             date = TypeUtils.castToDate(object);
         }
         
@@ -62,6 +63,7 @@ public class DateCodec extends AbstractDateDeserializer implements ObjectSeriali
                 format = new SimpleDateFormat(JSON.DEFFAULT_DATE_FORMAT, serializer.locale);
                 format.setTimeZone(serializer.timeZone);
             }
+            /** 格式化日期输出 */
             String text = format.format(date);
             out.writeString(text);
             return;
@@ -69,6 +71,7 @@ public class DateCodec extends AbstractDateDeserializer implements ObjectSeriali
         
         if (out.isEnabled(SerializerFeature.WriteClassName)) {
             if (object.getClass() != fieldType) {
+                /** 如果开启序列化WriteClassName特性 并且是日期类型, 获取时间毫秒数输出 */
                 if (object.getClass() == java.util.Date.class) {
                     out.write("new Date(");
                     out.writeLong(((Date) object).getTime());
@@ -84,6 +87,8 @@ public class DateCodec extends AbstractDateDeserializer implements ObjectSeriali
             }
         }
 
+
+        /** 获取Calendar类型的各个属性字段组合成一个字符串 */
         long time = date.getTime();
         if (out.isEnabled(SerializerFeature.UseISO8601DateFormat)) {
             char quote = out.isEnabled(SerializerFeature.UseSingleQuotes) ? '\'' : '\"'; 
