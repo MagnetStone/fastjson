@@ -7,7 +7,7 @@
 微信：skyingshang
 ```
 
-可以在线阅读[fastjson源码解析](https://zonghaishang.gitbooks.io/fastjson-source-code-analysis/content/),也可以参考已经添加注释的源码[fastjson注释版本\_master分支](https://github.com/zonghaishang/fastjson)。
+可以在线阅读gitbook[fastjson源码解析](https://zonghaishang.gitbooks.io/fastjson-source-code-analysis/content/),也可以参考已经添加注释的源码[fastjson注释版本\_master分支](https://github.com/zonghaishang/fastjson)。
 
 #### 我在工作之余编写源码解析的目的：
 
