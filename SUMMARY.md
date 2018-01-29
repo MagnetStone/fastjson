@@ -10,6 +10,8 @@
 * [序列化字节和字符串解析](serializer/serializerWriter_part2.md)
 * [序列化字段属性键值对](serializer/serializerWriter_part3.md)
 * [json序列化实现解析](serializer/json_part1.md)
+* [json内部注册序列化解析](serializer/json_part2.md)
+* [json特定序列化实现解析](serializer/json_part3.md)
 
 ## 词法和语法解析实现
 
