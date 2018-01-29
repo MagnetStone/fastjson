@@ -124,6 +124,14 @@ public class ParserConfig {
     public boolean                                          compatibleWithJavaBean = TypeUtils.compatibleWithJavaBean;
 
     {
+        /**
+         *
+         *  采用手动混淆技巧，将字符换类似
+         *  org.apache.bcel
+         *  org.springframework.
+         *  提前使用 fnv1a_64 算法生成
+         *
+         */
         denyHashCodes = new long[]{
                 -8720046426850100497L,
                 -8109300701639721088L,
