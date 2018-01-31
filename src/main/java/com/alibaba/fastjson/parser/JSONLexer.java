@@ -17,6 +17,7 @@ public interface JSONLexer {
     int  END            = 4;
     int  VALUE_NULL     = 5;
 
+    /** 获取当前token */
     int token();
 
     String tokenName();

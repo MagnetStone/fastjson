@@ -66,9 +66,11 @@ public final class JSONScanner extends JSONLexerBase {
     }
 
     public final char next() {
+        /** 递增buffer的位置 */
         int index = ++bp;
-        return ch = (index >= this.len ? //
-                EOI //
+        /** 如果已经超过字符串长度，返回EOF，否则去写一个字符 */
+        return ch = (index >= this.len ?
+                EOI
                 : text.charAt(index));
     }
 
@@ -757,6 +759,7 @@ public final class JSONScanner extends JSONLexerBase {
 
     @Override
     public boolean isEOF() {
+        /** 如果到达了流长度、或者遇到EOF结束符 认为结束 */
         return bp == len || ch == EOI && bp + 1 == len;
     }
 

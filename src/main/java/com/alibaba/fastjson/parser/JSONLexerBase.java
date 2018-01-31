@@ -39,23 +39,31 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         token = ERROR;
     }
 
+    /** 当前token含义 */
     protected int                            token;
+    /** 记录当前扫描字符位置 */
     protected int                            pos;
     protected int                            features;
 
+    /** 当前有效字符 */
     protected char                           ch;
+    /** 流(或者json字符串)中当前的位置，每次读取字符会递增 */
     protected int                            bp;
 
     protected int                            eofPos;
 
-    /**
-     * A character buffer for literals.
-     */
+    /** 字符缓冲区 */
     protected char[]                         sbuf;
+
+    /** 字符缓冲区的索引，指向下一个可写
+     *  字符的位置，也代表字符缓冲区字符数量
+     */
     protected int                            sp;
 
     /**
      * number start position
+     * 可以理解为 找到token时 token的首字符位置
+     * 和bp不一样，这个不会递增，会在开始token前记录一次
      */
     protected int                            np;
 
@@ -98,38 +106,46 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
     }
 
     public final void nextToken() {
+        /** 将字符buffer pos设置为初始0 */
         sp = 0;
 
         for (;;) {
+            /** pos记录为流的当前位置 */
             pos = bp;
 
             if (ch == '/') {
+                /** 如果是注释// 或者 \/* *\/ 注释，跳过注释 */
                 skipComment();
                 continue;
             }
 
             if (ch == '"') {
+                /** 读取引号内的字符串 */
                 scanString();
                 return;
             }
 
             if (ch == ',') {
+                /** 跳过当前，读取下一个字符 */
                 next();
                 token = COMMA;
                 return;
             }
 
             if (ch >= '0' && ch <= '9') {
+                /** 读取整数 */
                 scanNumber();
                 return;
             }
 
             if (ch == '-') {
+                /** 读取负数 */
                 scanNumber();
                 return;
             }
 
             switch (ch) {
+                /** 读取单引号后面的字符串，和scanString逻辑一致 */
                 case '\'':
                     if (!isEnabled(Feature.AllowSingleQuotes)) {
                         throw new JSONException("Feature.AllowSingleQuotes is false");
@@ -145,21 +161,26 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                     next();
                     break;
                 case 't': // true
+                    /** 读取字符true */
                     scanTrue();
                     return;
                 case 'f': // false
+                    /** 读取字符false */
                     scanFalse();
                     return;
                 case 'n': // new,null
+                    /** 读取为new或者null的token */
                     scanNullOrNew();
                     return;
                 case 'T':
                 case 'N': // NULL
                 case 'S':
                 case 'u': // undefined
+                    /** 读取标识符，已经自动预读了下一个字符 */
                     scanIdent();
                     return;
                 case '(':
+                    /** 读取下一个字符 */
                     next();
                     token = LPAREN;
                     return;
@@ -211,6 +232,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                         token = EOF;
                         pos = bp = eofPos;
                     } else {
+                        /** 忽略控制字符或者删除字符 */
                         if (ch <= 31 || ch == 127) {
                             next();
                             break;
@@ -227,9 +249,11 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
     }
 
     public final void nextToken(int expect) {
+        /** 将字符buffer pos设置为初始0 */
         sp = 0;
 
         for (;;) {
+
             switch (expect) {
                 case JSONToken.LBRACE:
                     if (ch == '{') {
@@ -560,33 +584,44 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
     public abstract char next();
 
     protected void skipComment() {
+        /** 读下一个字符 */
         next();
+        /** 连续遇到左反斜杠/ */
         if (ch == '/') {
             for (;;) {
+                /** 读下一个字符 */
                 next();
                 if (ch == '\n') {
+                    /** 如果遇到换行符，继续读取下一个字符并返回 */
                     next();
                     return;
+                    /** 如果已经遇到流结束，返回 */
                 } else if (ch == EOI) {
                     return;
                 }
             }
+            /** 遇到`/*` 注释的格式 */
         } else if (ch == '*') {
+            /** 读下一个字符 */
             next();
-
             for (; ch != EOI;) {
                 if (ch == '*') {
+                    /** 如果遇到*,继续尝试读取下一个字符，看看是否是/字符 */
                     next();
                     if (ch == '/') {
+                        /** 如果确实是/字符，提前预读下一个有效字符后终止 */
                         next();
                         return;
                     } else {
+                        /** 遇到非/ 继续跳过度下一个字符 */
                         continue;
                     }
                 }
+                /** 如果没有遇到`*\` 注释格式, 继续读下一个字符 */
                 next();
             }
         } else {
+            /** 不符合// 或者 \/* *\/ 注释格式 */
             throw new JSONException("invalid comment");
         }
     }
@@ -873,17 +908,22 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
     protected abstract void copyTo(int offset, int count, char[] dest);
 
     public final void scanString() {
+        /** 记录当前流中token的开始位置, np指向引号的索引 */
         np = bp;
         hasSpecial = false;
         char ch;
         for (;;) {
+
+            /** 读取当前字符串的字符 */
             ch = next();
 
+            /** 如果遇到字符串结束符"， 则结束 */
             if (ch == '\"') {
                 break;
             }
 
             if (ch == EOI) {
+                /** 如果遇到了结束符EOI，但是没有遇到流的结尾，添加EOI结束符 */
                 if (!isEOF()) {
                     putChar((char) EOI);
                     continue;
@@ -891,10 +931,13 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                 throw new JSONException("unclosed string : " + ch);
             }
 
+            /** 处理转译字符逻辑 */
             if (ch == '\\') {
                 if (!hasSpecial) {
+                    /** 第一次遇到\认为是特殊符号 */
                     hasSpecial = true;
 
+                    /** 如果buffer空间不够，执行2倍扩容 */
                     if (sp >= sbuf.length) {
                         int newCapcity = sbuf.length * 2;
                         if (sp > newCapcity) {
@@ -905,78 +948,103 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                         sbuf = newsbuf;
                     }
 
+                    /** 复制有效字符串到buffer中，不包括引号 */
                     copyTo(np + 1, sp, sbuf);
                     // text.getChars(np + 1, np + 1 + sp, sbuf, 0);
                     // System.arraycopy(buf, np + 1, sbuf, 0, sp);
                 }
 
+                /** 读取转译字符\下一个字符 */
                 ch = next();
 
+                /** 转换ascii字符，请参考：https://baike.baidu.com/item/ASCII/309296?fr=aladdin */
                 switch (ch) {
                     case '0':
+                        /** 空字符 */
                         putChar('\0');
                         break;
                     case '1':
+                        /** 标题开始 */
                         putChar('\1');
                         break;
                     case '2':
+                        /** 正文开始 */
                         putChar('\2');
                         break;
                     case '3':
+                        /** 正文结束 */
                         putChar('\3');
                         break;
                     case '4':
+                        /** 传输结束 */
                         putChar('\4');
                         break;
                     case '5':
+                        /** 请求 */
                         putChar('\5');
                         break;
                     case '6':
+                        /** 收到通知 */
                         putChar('\6');
                         break;
                     case '7':
+                        /** 响铃 */
                         putChar('\7');
                         break;
                     case 'b': // 8
+                        /** 退格 */
                         putChar('\b');
                         break;
                     case 't': // 9
+                        /** 水平制表符 */
                         putChar('\t');
                         break;
                     case 'n': // 10
+                        /** 换行键 */
                         putChar('\n');
                         break;
                     case 'v': // 11
+                        /** 垂直制表符 */
                         putChar('\u000B');
                         break;
                     case 'f': // 12
+                        /** 换页键 */
                     case 'F':
+                        /** 换页键 */
                         putChar('\f');
                         break;
                     case 'r': // 13
+                        /** 回车键 */
                         putChar('\r');
                         break;
                     case '"': // 34
+                        /** 双引号 */
                         putChar('"');
                         break;
                     case '\'': // 39
+                        /** 闭单引号 */
                         putChar('\'');
                         break;
                     case '/': // 47
+                        /** 斜杠 */
                         putChar('/');
                         break;
                     case '\\': // 92
+                        /** 反斜杠 */
                         putChar('\\');
                         break;
                     case 'x':
+                        /** 小写字母x, 标识一个字符 */
                         char x1 = ch = next();
                         char x2 = ch = next();
 
+                        /** x1 左移4位 + x2 */
                         int x_val = digits[x1] * 16 + digits[x2];
                         char x_char = (char) x_val;
                         putChar(x_char);
                         break;
                     case 'u':
+                        /** 小写字母u, 标识一个字符 */
                         char u1 = ch = next();
                         char u2 = ch = next();
                         char u3 = ch = next();
@@ -991,11 +1059,13 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                 continue;
             }
 
+            /** 没有转译字符，递增buffer字符位置 */
             if (!hasSpecial) {
                 sp++;
                 continue;
             }
 
+            /** 继续读取转译字符后面的字符 */
             if (sp == sbuf.length) {
                 putChar(ch);
             } else {
@@ -1004,6 +1074,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         }
 
         token = JSONToken.LITERAL_STRING;
+        /** 自动预读下一个字符 */
         this.ch = next();
     }
 
@@ -4500,6 +4571,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
 
         if (ch == ' ' || ch == ',' || ch == '}' || ch == ']' || ch == '\n' || ch == '\r' || ch == '\t' || ch == EOI
                 || ch == '\f' || ch == '\b' || ch == ':' || ch == '/') {
+            /** 兼容性防御，标记是true的token */
             token = JSONToken.TRUE;
         } else {
             throw new JSONException("scan true error");
@@ -4586,6 +4658,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
     }
 
     public final void scanIdent() {
+        /** 记录当前流中token的开始位置, np指向当前token前一个字符 */
         np = bp - 1;
         hasSpecial = false;
 
@@ -4593,10 +4666,12 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
             sp++;
 
             next();
+            /** 如果是字母或数字，继续读取 */
             if (Character.isLetterOrDigit(ch)) {
                 continue;
             }
 
+            /** 获取字符串值 */
             String ident = stringVal();
 
             if ("null".equalsIgnoreCase(ident)) {
@@ -4872,6 +4947,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
      * Append a character to sbuf.
      */
     protected final void putChar(char ch) {
+        /** 如果buffer空间不够， 执行2倍扩容*/
         if (sp == sbuf.length) {
             char[] newsbuf = new char[sbuf.length * 2];
             System.arraycopy(sbuf, 0, newsbuf, 0, sbuf.length);
@@ -4885,11 +4961,14 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
             throw new JSONException("illegal state. " + ch);
         }
         next();
+        /** 十六进制x紧跟着单引号 */
+        /** @see com.alibaba.fastjson.serializer.SerializeWriter#writeHex(byte[]) */
         if (ch != '\'') {
             throw new JSONException("illegal state. " + ch);
         }
 
         np = bp;
+        /** 这里一次next, for循环也读一次next, 因为十六进制被写成2个字节的单字符 */
         next();
 
         for (int i = 0;;++i) {
@@ -4899,6 +4978,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                 continue;
             } else if (ch == '\'') {
                 sp++;
+                /** 遇到结束符号，自动预读下一个字符 */
                 next();
                 break;
             } else {
@@ -4909,8 +4989,10 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
     }
 
     public final void scanNumber() {
+        /** 记录当前流中token的开始位置, np指向数字字符索引 */
         np = bp;
 
+        /** 兼容处理负数 */
         if (ch == '-') {
             sp++;
             next();
@@ -4918,6 +5000,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
 
         for (;;) {
             if (ch >= '0' && ch <= '9') {
+                /** 如果是数字字符，递增索引位置 */
                 sp++;
             } else {
                 break;
@@ -4927,8 +5010,10 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
 
         boolean isDouble = false;
 
+        /** 如果遇到小数点字符 */
         if (ch == '.') {
             sp++;
+            /** 继续读小数点后面字符 */
             next();
             isDouble = true;
 
@@ -4942,6 +5027,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
             }
         }
 
+        /** 继续读取数字后面的类型 */
         if (ch == 'L') {
             sp++;
             next();
@@ -4960,6 +5046,8 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
             next();
             isDouble = true;
         } else if (ch == 'e' || ch == 'E') {
+
+            /** 扫描科学计数法 */
             sp++;
             next();
 
@@ -5081,13 +5169,16 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
 
     static {
         for (int i = '0'; i <= '9'; ++i) {
+            /** 索引48存储数字0，依次类推 */
             digits[i] = i - '0';
         }
 
         for (int i = 'a'; i <= 'f'; ++i) {
+            /** 索引97存储10，依次类推 */
             digits[i] = (i - 'a') + 10;
         }
         for (int i = 'A'; i <= 'F'; ++i) {
+            /** 索引65存储10，依次类推 */
             digits[i] = (i - 'A') + 10;
         }
     }
