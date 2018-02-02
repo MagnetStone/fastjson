@@ -174,6 +174,7 @@ public final class JSONScanner extends JSONLexerBase {
     }
 
     public final String numberString() {
+        /** 取token最后一个字符 */
         char chLocal = charAt(np + sp - 1);
 
         int sp = this.sp;
@@ -181,6 +182,7 @@ public final class JSONScanner extends JSONLexerBase {
             sp--;
         }
 
+        /** 取数字类型字符串，不包括后缀类型 */
         return this.subString(np, sp);
     }
 

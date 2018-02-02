@@ -25,6 +25,8 @@ import java.util.*;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONException;
 import com.alibaba.fastjson.annotation.JSONType;
+import com.alibaba.fastjson.serializer.CollectionCodec;
+import com.alibaba.fastjson.util.FieldInfo;
 import com.alibaba.fastjson.util.IOUtils;
 import com.alibaba.fastjson.util.TypeUtils;
 
@@ -248,6 +250,9 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
 
     }
 
+    /**
+     *  这个方法主要是根据期望的字符expect，判定expect对应的token
+     */
     public final void nextToken(int expect) {
         /** 将字符buffer pos设置为初始0 */
         sp = 0;
@@ -320,12 +325,14 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                 case JSONToken.LITERAL_STRING:
                     if (ch == '"') {
                         pos = bp;
+                        /** 扫描字符串, pos指向字符串引号索引 */
                         scanString();
                         return;
                     }
 
                     if (ch >= '0' && ch <= '9') {
                         pos = bp;
+                        /** 扫描数字, 前面已经分析过 */
                         scanNumber();
                         return;
                     }
@@ -368,27 +375,32 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                     }
                     break;
                 case JSONToken.IDENTIFIER:
+                    /** 跳过空白字符，如果是标识符_、$和字母开头，否则自动获取下一个token */
                     nextIdent();
                     return;
                 default:
                     break;
             }
 
+            /** 跳过空白字符 */
             if (ch == ' ' || ch == '\n' || ch == '\r' || ch == '\t' || ch == '\f' || ch == '\b') {
                 next();
                 continue;
             }
 
+            /** 针对其他token自动读取下一个, 比如遇到冒号：,自动下一个token */
             nextToken();
             break;
         }
     }
 
     public final void nextIdent() {
+        /** 忽略空白字符，包括退格和换页符等等 */
         while (isWhitespace(ch)) {
             next();
         }
         if (ch == '_' || ch == '$' || Character.isLetter(ch)) {
+            /** 扫描标识符，以下 _、$ 、字母开头 */
             scanIdent();
         } else {
             nextToken();
@@ -403,12 +415,14 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         sp = 0;
 
         for (;;) {
+            /** 如果遇到和期望expect字符相等，跳过，解析下一个token */
             if (ch == expect) {
                 next();
                 nextToken();
                 return;
             }
 
+            /** 忽略空白字符 */
             if (ch == ' ' || ch == '\n' || ch == '\r' || ch == '\t' || ch == '\f' || ch == '\b') {
                 next();
                 continue;
@@ -440,6 +454,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         if (np == -1) {
             np = 0;
         }
+        /** np是token开始索引, sp是buffer索引，也代表buffer字符个数 */
         int i = np, max = np + sp;
         long limit;
         long multmin;
@@ -447,6 +462,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
 
         char type = ' ';
 
+        /** 探测数字类型最后一位是否带类型 */
         switch (charAt(max - 1)) {
             case 'L':
                 max--;
@@ -464,6 +480,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                 break;
         }
 
+        /** 探测数字首字符是否是符号 */
         if (charAt(np) == '-') {
             negative = true;
             limit = Long.MIN_VALUE;
@@ -473,13 +490,18 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         }
         multmin = MULTMIN_RADIX_TEN;
         if (i < max) {
+            /** 数字第一个字母转换成数字 */
             digit = charAt(i++) - '0';
             result = -digit;
         }
+
+        /** 快速处理高精度整数，因为整数最大是10^9次方 */
         while (i < max) {
             // Accumulating negatively avoids surprises near MAX_VALUE
             digit = charAt(i++) - '0';
+            /** multmin 大概10^17 */
             if (result < multmin) {
+                /** numberString获取到的不包含数字后缀类型，但是包括负数符号(如果有) */
                 return new BigInteger(numberString());
             }
             result *= 10;
@@ -490,7 +512,11 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         }
 
         if (negative) {
+            /** 处理完数字 i 是指向数字最后一个字符的下一个字符,
+             *  这里判断 i > np + 1 , 代表在 有效数字字符范围
+             */
             if (i > np + 1) {
+                /** 这里根据类型具体后缀类型做一次转换 */
                 if (result >= Integer.MIN_VALUE && type != 'L') {
                     if (type == 'S') {
                         return (short) result;
@@ -507,7 +533,9 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                 throw new NumberFormatException(numberString());
             }
         } else {
+            /** 这里是整数， 因为前面处理成负数，取反就可以了 */
             result = -result;
+            /** 这里根据类型具体后缀类型做一次转换 */
             if (result <= Integer.MAX_VALUE && type != 'L') {
                 if (type == 'S') {
                     return (short) result;
@@ -528,8 +556,10 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
     }
 
     public float floatValue() {
+        /** numberString获取到的不包含数字后缀类型，但是包括负数符号(如果有) */
         String strVal = numberString();
         float floatValue = Float.parseFloat(strVal);
+        /** 如果是0或者正无穷大，首字母是0-9 代表溢出 */
         if (floatValue == 0 || floatValue == Float.POSITIVE_INFINITY) {
             char c0 = strVal.charAt(0);
             if (c0 > '0' && c0 <= '9') {
@@ -672,13 +702,16 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
     public final String scanSymbol(final SymbolTable symbolTable, final char quote) {
         int hash = 0;
 
+        /** bp代表字符串或流当前位置，np记录的是token开始的索引位置 */
         np = bp;
+        /** 设置buffer中索引为0，sp代表buffer索引，同时也代表buffer字符数 */
         sp = 0;
         boolean hasSpecial = false;
         char chLocal;
         for (;;) {
             chLocal = next();
 
+            /** 如果遇到和字符quote相同，立即终止扫描*/
             if (chLocal == quote) {
                 break;
             }
@@ -687,10 +720,14 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                 throw new JSONException("unclosed.str");
             }
 
+            /** 遇到转译字符 */
             if (chLocal == '\\') {
                 if (!hasSpecial) {
+
+                    /** 第一次遇到\认为是特殊符号 */
                     hasSpecial = true;
 
+                    /** 如果buffer空间不够，执行2倍扩容 */
                     if (sp >= sbuf.length) {
                         int newCapcity = sbuf.length * 2;
                         if (sp > newCapcity) {
@@ -703,11 +740,16 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
 
                     // text.getChars(np + 1, np + 1 + sp, sbuf, 0);
                     // System.arraycopy(this.buf, np + 1, sbuf, 0, sp);
+                    /** 复制有效字符串到buffer中，不包括引号 */
                     arrayCopy(np + 1, sbuf, 0, sp);
                 }
 
                 chLocal = next();
 
+                /**
+                 *  处理转译特殊字符，
+                 *  @see #scanString()
+                 */
                 switch (chLocal) {
                     case '0':
                         hash = 31 * hash + (int) chLocal;
@@ -814,6 +856,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                 continue;
             }
 
+            /** 继续处理转译字符后面的字符 */
             if (sp == sbuf.length) {
                 putChar(chLocal);
             } else {
@@ -824,12 +867,14 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         token = LITERAL_STRING;
 
         String value;
+        /** 添加到符号表 */
         if (!hasSpecial) {
             // return this.text.substring(np + 1, np + 1 + sp).intern();
             int offset;
             if (np == -1) {
                 offset = 0;
             } else {
+                /** 处理np + 1 是因为np指向符号(多数是引号"), 提取引号内字符串*/
                 offset = np + 1;
             }
             value = addSymbol(offset, sp, hash, symbolTable);
@@ -838,6 +883,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         }
 
         sp = 0;
+        /** 自动预读下一个字符 */
         this.next();
 
         return value;
@@ -859,6 +905,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         final char first = ch;
 
         final boolean firstFlag = ch >= firstIdentifierFlags.length || firstIdentifierFlags[first];
+        /** 检查是否是合法标识符，字母、_和$ 开头 */
         if (!firstFlag) {
             throw new JSONException("illegal identifier : " + ch //
                     + info());
@@ -871,6 +918,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         np = bp;
         sp = 1;
         char chLocal;
+        /** 循环读有效字符，主要是A-Z, a-z, _, $ */
         for (;;) {
             chLocal = next();
 
@@ -889,6 +937,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         this.ch = charAt(bp);
         token = JSONToken.IDENTIFIER;
 
+        /** 当前扫描到字符是没有引号的 null */
         final int NULL_HASH = 3392903;
         if (sp == 4 && hash == NULL_HASH && charAt(np) == 'n' && charAt(np + 1) == 'u' && charAt(np + 2) == 'l'
                 && charAt(np + 3) == 'l') {
@@ -898,6 +947,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         // return text.substring(np, np + sp).intern();
 
         if (symbolTable == null) {
+            /** 求子串，针对android重新new String()，防止原来字符串驻留内存无法释放 */
             return subString(np, sp);
         }
 
@@ -1098,6 +1148,10 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         this.locale = locale;
     }
 
+    /**
+     *  代码详细注释请参考 #integerValue
+     *  @see #integerValue()
+     */
     public final int intValue() {
         if (np == -1) {
             np = 0;
@@ -1177,6 +1231,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
     public final int scanType(String type) {
         matchStat = UNKNOWN;
 
+        /** 从当前json串bp位置开始逐字符比较 [",@,type,", :,"] 是否匹配*/
         if (!charArrayCompare(typeFieldName)) {
             return NOT_MATCH_NAME;
         }
@@ -1190,6 +1245,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
             }
         }
         bpLocal += typeLength;
+        /** 匹配type最后一个字符是不是引号 */
         if (charAt(bpLocal) != '"') {
             return NOT_MATCH;
         }
@@ -1197,6 +1253,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         this.ch = charAt(++bpLocal);
 
         if (ch == ',') {
+            /** 预读下一个字符，标记当前token是逗号 */
             this.ch = charAt(++bpLocal);
             this.bp = bpLocal;
             token = JSONToken.COMMA;
@@ -1227,6 +1284,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
     public final boolean matchField(char[] fieldName) {
         for (;;) {
             if (!charArrayCompare(fieldName)) {
+                /** 如果当前字符和json串不匹配，忽略空格继续重试 */
                 if (isWhitespace(ch)) {
                     next();
                     continue;
@@ -1237,7 +1295,11 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
             }
         }
 
+        /** fieldName 格式是 "name":
+         *  @see FieldInfo#genFieldNameChars()
+         */
         bp = bp + fieldName.length;
+        /** 读取字段下一个字符 */
         ch = charAt(bp);
 
         if (ch == '{') {
@@ -1246,11 +1308,20 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         } else if (ch == '[') {
             next();
             token = JSONToken.LBRACKET;
+            /**
+             *  字段值是Set类型,
+             *  @see CollectionCodec#write(
+             *        com.alibaba.fastjson.serializer.JSONSerializer
+             *      , java.lang.Object
+             *      , java.lang.Object
+             *      , java.lang.reflect.Type, int)
+             */
         } else if (ch == 'S' && charAt(bp + 1) == 'e' && charAt(bp + 2) == 't' && charAt(bp + 3) == '[') {
             bp += 3;
             ch = charAt(bp);
             token = JSONToken.SET;
         } else {
+            /** 其他情况查找下一个token */
             nextToken();
         }
 
@@ -1264,6 +1335,12 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
     public String scanFieldString(char[] fieldName) {
         matchStat = UNKNOWN;
 
+        /**
+         *  从当前json串bp位置开始逐字符比较字段 是否匹配
+         *
+         *  fieldName 格式是 "name":
+         *  @see FieldInfo#genFieldNameChars()
+         */
         if (!charArrayCompare(fieldName)) {
             matchStat = NOT_MATCH_NAME;
             return stringDefaultValue();
@@ -1272,8 +1349,10 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         // int index = bp + fieldName.length;
 
         int offset = fieldName.length;
+        /** 读取字段下一个字符 */
         char chLocal = charAt(bp + (offset++));
 
+        /** json 值类型字符串一定"，否则不符合规范 */
         if (chLocal != '"') {
             matchStat = NOT_MATCH;
 
@@ -1282,6 +1361,9 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
 
         final String strVal;
         {
+            /** startIndex指向双引号下一个字符，
+             *  eg : "name":"string", startIndex指向s
+             */
             int startIndex = bp + fieldName.length + 1;
             int endIndex = indexOf('"', startIndex);
             if (endIndex == -1) {
@@ -1290,7 +1372,11 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
 
             int startIndex2 = bp + fieldName.length + 1; // must re compute
             String stringVal = subString(startIndex2, endIndex - startIndex2);
+            /** 包含特殊转译字符 */
             if (stringVal.indexOf('\\') != -1) {
+                /**
+                 * 处理场景 "value\\\"" json串值
+                 */
                 for (;;) {
                     int slashCount = 0;
                     for (int i = endIndex - 1; i >= 0; --i) {
@@ -1303,15 +1389,29 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                     if (slashCount % 2 == 0) {
                         break;
                     }
+                    /** 如果遇到奇数转译字符，遇到"不认为值结束，找下一个"才认为结束 */
                     endIndex = indexOf('"', endIndex + 1);
                 }
 
+                /**
+                 *  ---------------------------------------------------------------------------------
+                 *  | " | k | e | y | " | : | " | v | a | l | u |  e  |  \ |  \ |  \ |  " |  " |
+                 *  ---------------------------------------------------------------------------------
+                 *  | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |
+                 *  ---------------------------------------------------------------------------------
+                 *  | bp | |   |   |   |   |   |   |   |   |    |    |    |    |    |    | endIndex |
+                 *  ---------------------------------------------------------------------------------
+                 *  fieldName = "key":
+                 *  fieldName.length == 6, bp == 0, endIndex == 16
+                 *  chars_len = 16 - (0 + 6 + 1) = 9, == value\\\"
+                 */
                 int chars_len = endIndex - (bp + fieldName.length + 1);
                 char[] chars = sub_chars( bp + fieldName.length + 1, chars_len);
 
                 stringVal = readString(chars, chars_len);
             }
 
+            /** 偏移到json串字段值" 下一个字符 */
             offset += (endIndex - (bp + fieldName.length + 1) + 1);
             chLocal = charAt(bp + (offset++));
             strVal = stringVal;
@@ -1319,6 +1419,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
 
         if (chLocal == ',') {
             bp += offset;
+            /** 读取下一个字符 */
             this.ch = this.charAt(bp);
             matchStat = VALUE;
             return strVal;
@@ -1326,18 +1427,22 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
 
         if (chLocal == '}') {
             chLocal = charAt(bp + (offset++));
+            /** 如果字段值紧跟, 标记下次token为逗号 */
             if (chLocal == ',') {
                 token = JSONToken.COMMA;
                 bp += offset;
                 this.ch = this.charAt(bp);
+                /** 如果字段值紧跟] 标记下次token为右中括号 */
             } else if (chLocal == ']') {
                 token = JSONToken.RBRACKET;
                 bp += offset;
                 this.ch = this.charAt(bp);
+                /** 如果字段值紧跟} 标记下次token为右花括号 */
             } else if (chLocal == '}') {
                 token = JSONToken.RBRACE;
                 bp += offset;
                 this.ch = this.charAt(bp);
+                /** 特殊标记结束 */
             } else if (chLocal == EOI) {
                 token = JSONToken.EOF;
                 bp += (offset - 1);
@@ -1359,8 +1464,10 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         matchStat = UNKNOWN;
 
         int offset = 0;
+
         char chLocal = charAt(bp + (offset++));
 
+        /** 兼容处理null字符串 */
         if (chLocal == 'n') {
             if (charAt(bp + offset) == 'u' && charAt(bp + offset + 1) == 'l' && charAt(bp + offset + 2) == 'l') {
                 offset += 3;
@@ -1381,8 +1488,6 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
             }
         }
 
-
-
         final String strVal;
         for (;;) {
             if (chLocal == '"') {
@@ -1393,6 +1498,10 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                 }
 
                 String stringVal = subString(bp + offset, endIndex - startIndex);
+                /**
+                 *  处理逻辑请参考详细注释：
+                 *  @see ##scanFieldString(char[])
+                 */
                 if (stringVal.indexOf('\\') != -1) {
                     for (; ; ) {
                         int slashCount = 0;
@@ -1430,8 +1539,10 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         }
 
         for (;;) {
+            /** 如果遇到和期望字符认为结束符 */
             if (chLocal == expectNextChar) {
                 bp += offset;
+                /** 预读下一个字符 */
                 this.ch = charAt(bp);
                 matchStat = VALUE;
                 return strVal;
@@ -1529,8 +1640,10 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         matchStat = UNKNOWN;
 
         int offset = 0;
+        /** 读取第一个token字符 */
         char chLocal = charAt(bp + (offset++));
 
+        /** 兼容处理null 标识符 */
         if (chLocal == 'n') {
             if (charAt(bp + offset) == 'u' && charAt(bp + offset + 1) == 'l' && charAt(bp + offset + 2) == 'l') {
                 offset += 3;
@@ -1566,6 +1679,9 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                 // this.ch = chLocal = charAt(bp);
                 int start = bp + 0 + 1;
                 int len = bp + offset - start - 1;
+                /** 扫描到结束字符，加到符号表中，
+                 *  len = offset -2 , 不是更简洁吗？
+                 */
                 strVal = addSymbol(start, len, hash, symbolTable);
                 chLocal = charAt(bp + (offset++));
                 break;
@@ -1573,6 +1689,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
 
             hash = 31 * hash + chLocal;
 
+            /** 不允许有转译字符 */
             if (chLocal == '\\') {
                 matchStat = NOT_MATCH;
                 return null;
@@ -1580,12 +1697,14 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         }
 
         for (;;) {
+            /** 检查字符是否是期望的结束字符serperator */
             if (chLocal == serperator) {
                 bp += offset;
                 this.ch = this.charAt(bp);
                 matchStat = VALUE;
                 return strVal;
             } else {
+                /** 忽略任意多个空白字符 */
                 if (isWhitespace(chLocal)) {
                     chLocal = charAt(bp + (offset++));
                     continue;
@@ -1854,6 +1973,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
     public int scanFieldInt(char[] fieldName) {
         matchStat = UNKNOWN;
 
+        /** 属性不匹配，忽略 */
         if (!charArrayCompare(fieldName)) {
             matchStat = NOT_MATCH_NAME;
             return 0;
@@ -1864,37 +1984,46 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
 
         final boolean negative = chLocal == '-';
         if (negative) {
+            /** 如果是负数，读取第一个数字字符 */
             chLocal = charAt(bp + (offset++));
         }
 
         int value;
         if (chLocal >= '0' && chLocal <= '9') {
+            /** 转换成数字 */
             value = chLocal - '0';
             for (;;) {
                 chLocal = charAt(bp + (offset++));
                 if (chLocal >= '0' && chLocal <= '9') {
                     value = value * 10 + (chLocal - '0');
                 } else if (chLocal == '.') {
+                    /** 数字后面有点，不符合整数，标记不匹配 */
                     matchStat = NOT_MATCH;
                     return 0;
                 } else {
                     break;
                 }
             }
-            if (value < 0 //
+            /** value < 0 代表整数值溢出了,
+             *  11 + 3 代表了最小负数加了引号(占用2), 剩余
+             *  占用1 是因为读完最后一位数字，offset++ 递增了1
+             */
+            if (value < 0
                     || offset > 11 + 3 + fieldName.length) {
-                if (value != Integer.MIN_VALUE //
-                        || offset != 17 //
+                if (value != Integer.MIN_VALUE
+                        || offset != 17
                         || !negative) {
                     matchStat = NOT_MATCH;
                     return 0;
                 }
             }
         } else {
+            /** 非数字代表不匹配 */
             matchStat = NOT_MATCH;
             return 0;
         }
 
+        /** 如果遇到逗号，认为结束 */
         if (chLocal == ',') {
             bp += offset;
             this.ch = this.charAt(bp);
@@ -2048,9 +2177,10 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         char chLocal = charAt(bp + (offset++));
 
         boolean value = false;
+        /** 如果匹配到"true" 返回 true */
         if (chLocal == 't') {
-            if (charAt(bp + offset) == 'r' //
-                    && charAt(bp + offset + 1) == 'u' //
+            if (charAt(bp + offset) == 'r'
+                    && charAt(bp + offset + 1) == 'u'
                     && charAt(bp + offset + 2) == 'e') {
                 offset += 3;
                 chLocal = charAt(bp + (offset++));
@@ -2059,6 +2189,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                 matchStat = NOT_MATCH;
                 return false;
             }
+            /** 如果匹配到"false" 返回 false */
         } else if (chLocal == 'f') {
             if (charAt(bp + offset) == 'a' //
                     && charAt(bp + offset + 1) == 'l' //
@@ -2080,6 +2211,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         }
 
         for (;;) {
+            /** 如果匹配到期望字符串，结束 */
             if (chLocal == expectNext) {
                 bp += offset;
                 this.ch = this.charAt(bp);
@@ -2102,20 +2234,25 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         int offset = 0;
         char chLocal = charAt(bp + (offset++));
 
+        /** 取整数第一个字符判断是否是引号 */
         final boolean quote = chLocal == '"';
         if (quote) {
+            /** 如果是双引号，取第一个数字字符 */
             chLocal = charAt(bp + (offset++));
         }
 
         final boolean negative = chLocal == '-';
         if (negative) {
+            /** 如果是负数，继续取下一个字符 */
             chLocal = charAt(bp + (offset++));
         }
 
         int value;
+        /** 是数字类型 */
         if (chLocal >= '0' && chLocal <= '9') {
             value = chLocal - '0';
             for (;;) {
+                /** 循环将字符转换成数字 */
                 chLocal = charAt(bp + (offset++));
                 if (chLocal >= '0' && chLocal <= '9') {
                     value = value * 10 + (chLocal - '0');
@@ -2131,9 +2268,11 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                 return 0;
             }
         } else if (chLocal == 'n' && charAt(bp + offset) == 'u' && charAt(bp + offset + 1) == 'l' && charAt(bp + offset + 2) == 'l') {
+            /** 匹配到null */
             matchStat = VALUE_NULL;
             value = 0;
             offset += 3;
+            /** 读取null后面的一个字符 */
             chLocal = charAt(bp + offset++);
 
             if (quote && chLocal == '"') {
@@ -2141,6 +2280,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
             }
 
             for (;;) {
+                /** 如果读取null后面有逗号，认为结束 */
                 if (chLocal == ',') {
                     bp += offset;
                     this.ch = charAt(bp);
@@ -2153,6 +2293,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                     matchStat = VALUE_NULL;
                     token = JSONToken.RBRACKET;
                     return value;
+                    /** 忽略空白字符 */
                 } else if (isWhitespace(chLocal)) {
                     chLocal = charAt(bp + offset++);
                     continue;
@@ -2167,6 +2308,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         }
 
         for (;;) {
+            /** 根据期望字符用于结束匹配 */
             if (chLocal == expectNext) {
                 bp += offset;
                 this.ch = this.charAt(bp);
@@ -2174,6 +2316,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                 token = JSONToken.COMMA;
                 return negative ? -value : value;
             } else {
+                /** 忽略空白字符 */
                 if (isWhitespace(chLocal)) {
                     chLocal = charAt(bp + (offset++));
                     continue;
@@ -2187,6 +2330,12 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
     public boolean scanFieldBoolean(char[] fieldName) {
         matchStat = UNKNOWN;
 
+        /**
+         *  从当前json串bp位置开始逐字符比较字段 是否匹配
+         *
+         *  fieldName 格式是 "name":
+         *  @see FieldInfo#genFieldNameChars()
+         */
         if (!charArrayCompare(fieldName)) {
             matchStat = NOT_MATCH_NAME;
             return false;
@@ -2196,6 +2345,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         char chLocal = charAt(bp + (offset++));
 
         boolean value;
+        /** 匹配true */
         if (chLocal == 't') {
             if (charAt(bp + (offset++)) != 'r') {
                 matchStat = NOT_MATCH;
@@ -2211,6 +2361,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
             }
 
             value = true;
+            /** 匹配false */
         } else if (chLocal == 'f') {
             if (charAt(bp + (offset++)) != 'a') {
                 matchStat = NOT_MATCH;
@@ -2231,11 +2382,13 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
 
             value = false;
         } else {
+            /** 如果不是true或者false 直接返回 */
             matchStat = NOT_MATCH;
             return false;
         }
 
         chLocal = charAt(bp + offset++);
+        /** 如果true或者false后面跟着一个逗号 */
         if (chLocal == ',') {
             bp += offset;
             this.ch = this.charAt(bp);
@@ -2245,8 +2398,10 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
             return value;
         }
 
+        /** 如果true或者false后面跟着一个闭合花括号 */
         if (chLocal == '}') {
             chLocal = charAt(bp + (offset++));
+            /** 如果闭合花括号紧跟着逗号、中括号、花括号，匹配有效 */
             if (chLocal == ',') {
                 token = JSONToken.COMMA;
                 bp += offset;
@@ -2269,6 +2424,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
             }
             matchStat = END;
         } else {
+            /** boolean后面没有跟 逗号或者 } ,认为不合法 */
             matchStat = NOT_MATCH;
             return false;
         }
@@ -2279,6 +2435,12 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
     public long scanFieldLong(char[] fieldName) {
         matchStat = UNKNOWN;
 
+        /**
+         *  从当前json串bp位置开始逐字符比较字段 是否匹配
+         *
+         *  fieldName 格式是 "name":
+         *  @see FieldInfo#genFieldNameChars()
+         */
         if (!charArrayCompare(fieldName)) {
             matchStat = NOT_MATCH_NAME;
             return 0;
@@ -2289,6 +2451,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
 
         boolean negative = false;
         if (chLocal == '-') {
+            /** 有符号，标识是负数 */
             chLocal = charAt(bp + (offset++));
             negative = true;
         }
@@ -2297,9 +2460,11 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         if (chLocal >= '0' && chLocal <= '9') {
             value = chLocal - '0';
             for (;;) {
+                /** 循环将字符转换成数字 */
                 chLocal = charAt(bp + (offset++));
                 if (chLocal >= '0' && chLocal <= '9') {
                     value = value * 10 + (chLocal - '0');
+                    /** 如果数字带标点符号，认为不是合法整数，匹配失败 */
                 } else if (chLocal == '.') {
                     matchStat = NOT_MATCH;
                     return 0;
@@ -2308,6 +2473,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                 }
             }
 
+            /** 如果偏移量超过最大long的21位，是无效数字 */
             boolean valid = offset - fieldName.length < 21
                     && (value >= 0 || (value == -9223372036854775808L && negative));
             if (!valid) {
@@ -2320,6 +2486,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         }
 
         if (chLocal == ',') {
+            /** 如果数字后面跟着逗号，结束 并预读下一个字符 */
             bp += offset;
             this.ch = this.charAt(bp);
             matchStat = VALUE;
@@ -2365,15 +2532,18 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         char chLocal = charAt(bp + (offset++));
         final boolean quote = chLocal == '"';
         if (quote) {
+            /** 有引号，继续读下一个字符 */
             chLocal = charAt(bp + (offset++));
         }
 
         final boolean negative = chLocal == '-';
         if (negative) {
+            /** 有符号，标识是负数 */
             chLocal = charAt(bp + (offset++));
         }
 
         long value;
+        /** 循环将字符转换成数字 */
         if (chLocal >= '0' && chLocal <= '9') {
             value = chLocal - '0';
             for (;;) {
@@ -2387,6 +2557,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                     break;
                 }
             }
+            /** 如果偏移量超过最大long的21位，是无效数字 */
             boolean valid = value >= 0 || (value == -9223372036854775808L && negative);
             if (!valid) {
                 String val = subString(bp, offset - 1);
@@ -2404,12 +2575,14 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
 
             for (;;) {
                 if (chLocal == ',') {
+                    /** 如果是null, 紧跟着逗号，认为结束匹配 */
                     bp += offset;
                     this.ch = charAt(bp);
                     matchStat = VALUE_NULL;
                     token = JSONToken.COMMA;
                     return value;
                 } else if (chLocal == ']') {
+                    /** 如果是null, 紧跟着逗号], 认为结束匹配 */
                     bp += offset;
                     this.ch = charAt(bp);
                     matchStat = VALUE_NULL;
@@ -2486,6 +2659,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                     intVal = intVal * 10 + (chLocal - '0');
                     continue;
                 } else {
+                    /** 如果遇到非数字字符终止 */
                     break;
                 }
             }
@@ -2495,11 +2669,13 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
             if (small) {
                 chLocal = charAt(bp + (offset++));
                 if (chLocal >= '0' && chLocal <= '9') {
+                    /** 将小数点后面数字转换成int类型数字 */
                     intVal = intVal * 10 + (chLocal - '0');
                     power = 10;
                     for (;;) {
                         chLocal = charAt(bp + (offset++));
                         if (chLocal >= '0' && chLocal <= '9') {
+                            /** 依次读取数字并转化int，记录小数点的数量级 */
                             intVal = intVal * 10 + (chLocal - '0');
                             power *= 10;
                             continue;
@@ -2515,6 +2691,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
 
             boolean exp = chLocal == 'e' || chLocal == 'E';
             if (exp) {
+                /** 处理科学计数法 */
                 chLocal = charAt(bp + (offset++));
                 if (chLocal == '+' || chLocal == '-') {
                     chLocal = charAt(bp + (offset++));
@@ -2534,8 +2711,23 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                     matchStat = NOT_MATCH;
                     return 0;
                 } else {
+                    /** 遇到浮点数最后一个引号，预读下一个 */
                     chLocal = charAt(bp + (offset++));
                 }
+
+                /**
+                 *  ----------------------------------------------------------------------------------------
+                 *  | { | " | k | e | y | " | : | " | 7 | 0 | 0 | 8   |  .  |  5 |  5 |  5 |  5 |  " |  }
+                 *  ----------------------------------------------------------------------------------------
+                 *  | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 |  18
+                 *  ----------------------------------------------------------------------------------------
+                 *  |  | bp |  |   |   |   |   | |start|   |    |    |    |    |    |    |    |    | offset
+                 *  ----------------------------------------------------------------------------------------
+                 *  fieldName = "key":
+                 *  fieldName.length == 6, bp == 0, offset == 17
+                 *  start代表指向浮点第一个数字或者-号,
+                 *  @see com.alibaba.json.bvt.parser.deser.BooleanFieldDeserializerTest#test_2()
+                 */
                 start = bp + fieldName.length + 1;
                 count = bp + offset - start - 2;
             } else {
@@ -2627,6 +2819,9 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         return value;
     }
 
+    /***
+     * @see #scanFieldFloat(char[])
+     */
     public final float scanFloat(char seperator) {
         matchStat = UNKNOWN;
 
@@ -2787,11 +2982,13 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         char chLocal = charAt(bp + (offset++));
         final boolean quote = chLocal == '"';
         if (quote) {
+            /** 如果包含引号，预读下一个字符 */
             chLocal = charAt(bp + (offset++));
         }
 
         boolean negative = chLocal == '-';
         if (negative) {
+            /** 如果引号紧跟着-号，预读下一个字符 */
             chLocal = charAt(bp + (offset++));
         }
 
@@ -2799,6 +2996,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         if (chLocal >= '0' && chLocal <= '9') {
             long intVal = chLocal - '0';
             for (; ; ) {
+                /** 读取double数字类型并转换成数字 */
                 chLocal = charAt(bp + (offset++));
                 if (chLocal >= '0' && chLocal <= '9') {
                     intVal = intVal * 10 + (chLocal - '0');
@@ -2811,6 +3009,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
             long power = 1;
             boolean small = (chLocal == '.');
             if (small) {
+                /** 读取小数点后面的数字类型并转换，记录小数点的位数 */
                 chLocal = charAt(bp + (offset++));
                 if (chLocal >= '0' && chLocal <= '9') {
                     intVal = intVal * 10 + (chLocal - '0');
@@ -2831,6 +3030,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                 }
             }
 
+            /** 处理科学计数法 */
             boolean exp = chLocal == 'e' || chLocal == 'E';
             if (exp) {
                 chLocal = charAt(bp + (offset++));
@@ -2923,6 +3123,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
 
         int offset = 0;
         char chLocal = charAt(bp + (offset++));
+        /** 取第一个字符并判断是否是引号 */
         final boolean quote = chLocal == '"';
         if (quote) {
             chLocal = charAt(bp + (offset++));
@@ -2930,12 +3131,14 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
 
         boolean negative = chLocal == '-';
         if (negative) {
+            /** 取引号的字符后面的-符号 */
             chLocal = charAt(bp + (offset++));
         }
 
         BigDecimal value;
         if (chLocal >= '0' && chLocal <= '9') {
             for (;;) {
+                /** 如果是数字字符，递增偏移量继续查找 */
                 chLocal = charAt(bp + (offset++));
                 if (chLocal >= '0' && chLocal <= '9') {
                     continue;
@@ -2946,6 +3149,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
 
             boolean small = (chLocal == '.');
             if (small) {
+                /** 如果是小数点, 读取后面字符尝试判断是否是数字字符 */
                 chLocal = charAt(bp + (offset++));
                 if (chLocal >= '0' && chLocal <= '9') {
                     for (;;) {
@@ -2993,6 +3197,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
             }
 
             char[] chars = this.sub_chars(start, count);
+            /** 直接读取字符串，用BigDecimal构造函数初始化 */
             value = new BigDecimal(chars);
         } else if (chLocal == 'n' && charAt(bp + offset) == 'u' && charAt(bp + offset + 1) == 'l' && charAt(bp + offset + 2) == 'l') {
             matchStat = VALUE_NULL;
@@ -4697,6 +4902,9 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
 
     public abstract String stringVal();
 
+    /** 子字符串在JDK6和JDK7不一样,
+     *  JDK6 默认实现获取子串会共享原字符串char[]，导致字符串无法释放
+     */
     public abstract String subString(int offset, int count);
 
     protected abstract char[] sub_chars(int offset, int count);
