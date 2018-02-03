@@ -782,6 +782,8 @@
     }
 ```
 
+目前已经分析足够多的此法分析代码，可以先自己分析或者参考下方更详细`scanFieldString`实现。
+
 ``` java
 public abstract String stringVal();
 ```
