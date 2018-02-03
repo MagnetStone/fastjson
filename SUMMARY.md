@@ -15,7 +15,8 @@
 
 ## 词法和语法解析实现
 
-* [词法分析](lexer/lexer_part1.md)
+* [词法Token定义解析](lexer/lexer_part1.md)
+* [词法解析实现](lexer/lexer_part2.md)
 
 ## 反序列化源码解析
 
