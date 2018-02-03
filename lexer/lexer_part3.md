@@ -923,3 +923,5 @@ public abstract String stringVal();
 ```
 
 目前分析的代码其实包括大部分实现了，这里没有给出`Decimal`和`Double`的实现，它们实现是类似的并且相对简单，主要是提取字符串直接用对应类的构造函数生成对象而已，如果想详细了解可以参考代码中已经添加的详尽注释。
+
+终于要结束词法分析相关`api`接口的分析了，这个是词法分析非常重要的基础实现，有继承这个类的两种实现`com.alibaba.fastjson.parser.JSONScanner`和`com.alibaba.fastjson.parser.JSONReaderScanner`, 这两个类继承主要增加一个优化的措施，后面讲解反序列化实现的时候会对相关重写的方法进行补充。
