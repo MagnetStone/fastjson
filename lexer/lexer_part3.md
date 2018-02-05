@@ -790,7 +790,7 @@ public abstract String stringVal();
 
 这里提供的`stringVal()`需要由子类实现，原因：
 
-1. 在`android6.0`和`jdk6`版本 获取子字符串会共享外层`String`的`char[]` 会导致String占用内存无法释放（特别是打文本字符串）。
+1. 在`android6.0`和`jdk6`版本 获取子字符串会共享外层`String`的`char[]` 会导致String占用内存无法释放（特别是大文本字符串）。
 
 ``` java
     public String scanFieldString(char[] fieldName) {
