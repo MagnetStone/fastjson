@@ -372,37 +372,46 @@ public class ParserConfig {
     }
 
     public ObjectDeserializer getDeserializer(Type type) {
+        /** 首先从内部已经注册查找特定class的反序列化实例 */
         ObjectDeserializer derializer = this.deserializers.get(type);
         if (derializer != null) {
             return derializer;
         }
 
         if (type instanceof Class<?>) {
+            /** 引用类型，根据特定类型再次匹配 */
             return getDeserializer((Class<?>) type, type);
         }
 
         if (type instanceof ParameterizedType) {
+            /** 获取泛型类型原始类型 */
             Type rawType = ((ParameterizedType) type).getRawType();
+            /** 泛型原始类型是引用类型，根据特定类型再次匹配 */
             if (rawType instanceof Class<?>) {
                 return getDeserializer((Class<?>) rawType, type);
             } else {
+                /** 递归调用反序列化查找 */
                 return getDeserializer(rawType);
             }
         }
 
         if (type instanceof WildcardType) {
+            /** 类型是通配符或者限定类型 */
             WildcardType wildcardType = (WildcardType) type;
             Type[] upperBounds = wildcardType.getUpperBounds();
             if (upperBounds.length == 1) {
                 Type upperBoundType = upperBounds[0];
+                /** 获取泛型上界(? extends T)，根据特定类型再次匹配 */
                 return getDeserializer(upperBoundType);
             }
         }
 
+        /** 如果无法匹配到，使用默认JavaObjectDeserializer反序列化 */
         return JavaObjectDeserializer.instance;
     }
 
     public ObjectDeserializer getDeserializer(Class<?> clazz, Type type) {
+        /** 首先从内部已经注册查找特定type的反序列化实例 */
         ObjectDeserializer derializer = deserializers.get(type);
         if (derializer != null) {
             return derializer;
@@ -412,6 +421,7 @@ public class ParserConfig {
             type = clazz;
         }
 
+        /** 再次从内部已经注册查找特定class的反序列化实例 */
         derializer = deserializers.get(type);
         if (derializer != null) {
             return derializer;
@@ -421,6 +431,7 @@ public class ParserConfig {
             JSONType annotation = TypeUtils.getAnnotation(clazz,JSONType.class);
             if (annotation != null) {
                 Class<?> mappingTo = annotation.mappingTo();
+                /** 根据类型注解指定的反序列化类型 */
                 if (mappingTo != Void.class) {
                     return getDeserializer(mappingTo, mappingTo);
                 }
@@ -428,6 +439,7 @@ public class ParserConfig {
         }
 
         if (type instanceof WildcardType || type instanceof TypeVariable || type instanceof ParameterizedType) {
+            /** 根据泛型真实类型查找反序列化实例 */
             derializer = deserializers.get(clazz);
         }
 
@@ -435,11 +447,16 @@ public class ParserConfig {
             return derializer;
         }
 
+        /** 获取class名称，进行类型匹配(可以支持高版本jdk和三方库) */
         String className = clazz.getName();
         className = className.replace('$', '.');
 
-        if (className.startsWith("java.awt.") //
+        if (className.startsWith("java.awt.")
             && AwtCodec.support(clazz)) {
+            /**
+             *  如果class的name是"java.awt."开头 并且
+             *  继承 Point、Rectangle、Font或者Color 其中之一
+             */
             if (!awtError) {
                 String[] names = new String[] {
                         "java.awt.Point",
@@ -451,6 +468,7 @@ public class ParserConfig {
                 try {
                     for (String name : names) {
                         if (name.equals(className)) {
+                            /** 如果系统支持4中类型， 使用AwtCodec 反序列化 */
                             deserializers.put(Class.forName(name), derializer = AwtCodec.instance);
                             return derializer;
                         }
@@ -484,6 +502,7 @@ public class ParserConfig {
 
                     for (String name : names) {
                         if (name.equals(className)) {
+                            /** 如果系统支持JDK8中日期类型， 使用Jdk8DateCodec 反序列化 */
                             deserializers.put(Class.forName(name), derializer = Jdk8DateCodec.instance);
                             return derializer;
                         }
@@ -497,6 +516,7 @@ public class ParserConfig {
                     };
                     for (String name : names) {
                         if (name.equals(className)) {
+                            /** 如果系统支持JDK8中可选类型， 使用OptionalCodec 反序列化 */
                             deserializers.put(Class.forName(name), derializer = OptionalCodec.instance);
                             return derializer;
                         }
@@ -518,6 +538,7 @@ public class ParserConfig {
 
         final ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
         try {
+            /** 使用当前线程类加载器 查找 META-INF/services/AutowiredObjectDeserializer.class实现类 */
             for (AutowiredObjectDeserializer autowired : ServiceLoader.load(AutowiredObjectDeserializer.class,
                                                                             classLoader)) {
                 for (Type forType : autowired.getAutowiredFor()) {
@@ -542,6 +563,7 @@ public class ParserConfig {
             if (jsonType != null) {
                 deserClass = jsonType.deserializer();
                 try {
+                    /** 如果是枚举类型并使用了注解，使用注解指定的反序列化 */
                     derializer = (ObjectDeserializer) deserClass.newInstance();
                     deserializers.put(clazz, derializer);
                     return derializer;
@@ -549,25 +571,32 @@ public class ParserConfig {
                     // skip
                 }
             }
-
+            /** 如果是枚举类型，使用EnumSerializer反序列化 */
             derializer = new EnumDeserializer(clazz);
         } else if (clazz.isArray()) {
+            /** 如果是数组类型，使用数组对象反序列化实例 */
             derializer = ObjectArrayCodec.instance;
         } else if (clazz == Set.class || clazz == HashSet.class || clazz == Collection.class || clazz == List.class
                    || clazz == ArrayList.class) {
+            /** 如果class实现集合接口，使用CollectionCodec反序列化 */
             derializer = CollectionCodec.instance;
         } else if (Collection.class.isAssignableFrom(clazz)) {
+            /** 如果class实现类Collection接口，使用CollectionCodec反序列化 */
             derializer = CollectionCodec.instance;
         } else if (Map.class.isAssignableFrom(clazz)) {
+            /** 如果class实现Map接口，使用MapDeserializer反序列化 */
             derializer = MapDeserializer.instance;
         } else if (Throwable.class.isAssignableFrom(clazz)) {
+            /** 如果class继承Throwable类，使用ThrowableDeserializer反序列化 */
             derializer = new ThrowableDeserializer(this, clazz);
         } else if (PropertyProcessable.class.isAssignableFrom(clazz)) {
             derializer = new PropertyProcessableDeserializer((Class<PropertyProcessable>)clazz);
         } else {
+            /** 默认使用JavaBeanDeserializer反序列化(没有开启asm情况下) */
             derializer = createJavaBeanDeserializer(clazz, type);
         }
 
+        /** 加入cache，避免同类型反复创建 */
         putDeserializer(type, derializer);
 
         return derializer;
@@ -709,6 +738,7 @@ public class ParserConfig {
             }
         }
 
+        /** 创建通用Java对象反序列化实例JavaBeanDeserializer */
         if (!asmEnable) {
             return new JavaBeanDeserializer(this, clazz, type);
         }

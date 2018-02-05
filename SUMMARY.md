@@ -21,6 +21,9 @@
 
 ## 反序列化源码解析
 
+* [反序列化解析介绍](deserializer/deserilizer_part1.md)
+* [内部注册反序列化解析](deserializer/deserilizer_part2.md)
+
 ## fastjson设计模式
 
 ## 自己动手编译JDK

@@ -340,14 +340,20 @@ public abstract class JSON implements JSONStreamAware, JSONAware {
             return null;
         }
 
+        /** 配置反序列化时启用的特性，比如是否允许json字符串字段不包含双引号 */
         if (features != null) {
             for (Feature feature : features) {
                 featureValues |= feature.mask;
             }
         }
 
+        /**
+         *  初始化DefaultJSONParser，反序列化类型由它
+         *  委托config查找具体序列化处理器处理
+         */
         DefaultJSONParser parser = new DefaultJSONParser(input, config, featureValues);
 
+        /** 添加拦截器 */
         if (processor != null) {
             if (processor instanceof ExtraTypeProvider) {
                 parser.getExtraTypeProviders().add((ExtraTypeProvider) processor);
@@ -362,8 +368,10 @@ public abstract class JSON implements JSONStreamAware, JSONAware {
             }
         }
 
+        /** 使用反序列化实例转换对象，查找具体序列化实例委托给config查找 */
         T value = (T) parser.parseObject(clazz, null);
 
+        /** 处理json内部引用协议格式对象 */
         parser.handleResovleTask(value);
 
         parser.close();
@@ -485,6 +493,7 @@ public abstract class JSON implements JSONStreamAware, JSONAware {
     }
 
     public static <T> T parseObject(String text, Class<T> clazz) {
+        /** 根据指定text，返回期望的java对象类型class */
         return parseObject(text, clazz, new Feature[0]);
     }
 

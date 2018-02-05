@@ -26,6 +26,7 @@ import java.util.TimeZone;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONException;
 import com.alibaba.fastjson.annotation.JSONType;
+import com.alibaba.fastjson.serializer.SerializeWriter;
 import com.alibaba.fastjson.util.ASMUtils;
 import com.alibaba.fastjson.util.IOUtils;
 import com.alibaba.fastjson.util.TypeUtils;
@@ -115,6 +116,7 @@ public final class JSONScanner extends JSONLexerBase {
 
     public byte[] bytesValue() {
         if (token == JSONToken.HEX) {
+            /** @see SerializeWriter#writeHex(byte[]) */
             int start = np + 1, len = sp;
             if (len % 2 != 0) {
                 throw new JSONException("illegal state. " + len);
