@@ -179,16 +179,19 @@ public class DefaultJSONParser implements Closeable {
         final JSONLexer lexer = this.lexer;
         
         if (lexer.token() == JSONToken.NULL) {
+            /** token是null字符, 预读下一个token */
             lexer.nextToken();
             return null;
         }
         
         if (lexer.token() == JSONToken.RBRACE) {
+            /** token是}字符, 预读下一个token */
             lexer.nextToken();
             return object;
         }
 
         if (lexer.token() == JSONToken.LITERAL_STRING && lexer.stringVal().length() == 0) {
+            /** token是零长度字符串, 预读下一个token */
             lexer.nextToken();
             return object;
         }
@@ -203,6 +206,7 @@ public class DefaultJSONParser implements Closeable {
 
             boolean setContextFlag = false;
             for (;;) {
+                /** 忽略前置空格和任意逗号(,) */
                 lexer.skipWhitespace();
                 char ch = lexer.getCurrent();
                 if (lexer.isEnabled(Feature.AllowArbitraryCommas)) {
@@ -216,6 +220,7 @@ public class DefaultJSONParser implements Closeable {
                 boolean isObjectKey = false;
                 Object key;
                 if (ch == '"') {
+                    /** 扫描到字段key名字 */
                     key = lexer.scanSymbol(symbolTable, '"');
                     lexer.skipWhitespace();
                     ch = lexer.getCurrent();
@@ -245,6 +250,7 @@ public class DefaultJSONParser implements Closeable {
                         throw new JSONException("syntax error");
                     }
 
+                    /** 扫描到字段key名字, 只不过是单引号括起来 */
                     key = lexer.scanSymbol(symbolTable, '\'');
                     lexer.skipWhitespace();
                     ch = lexer.getCurrent();
@@ -256,7 +262,9 @@ public class DefaultJSONParser implements Closeable {
                 } else if (ch == ',') {
                     throw new JSONException("syntax error");
                 } else if ((ch >= '0' && ch <= '9') || ch == '-') {
+                    /** 重置buffer索引位置 */
                     lexer.resetStringPosition();
+                    /** 扫描map的key为数字类型 */
                     lexer.scanNumber();
                     try {
                         if (lexer.token() == JSONToken.LITERAL_INT) {
@@ -466,6 +474,7 @@ public class DefaultJSONParser implements Closeable {
 
                     map.put(key, value);
                 } else if (ch >= '0' && ch <= '9' || ch == '-') {
+                    /** 扫描数字，eg，扫描AtomicInteger对应的map值 */
                     lexer.scanNumber();
                     if (lexer.token() == JSONToken.LITERAL_INT) {
                         value = lexer.integerValue();
@@ -1338,15 +1347,18 @@ public class DefaultJSONParser implements Closeable {
             case SET:
                 lexer.nextToken();
                 HashSet<Object> set = new HashSet<Object>();
+                /** 探测到是Set集合类型，解析值 */
                 parseArray(set, fieldName);
                 return set;
             case TREE_SET:
                 lexer.nextToken();
                 TreeSet<Object> treeSet = new TreeSet<Object>();
+                /** 探测到是TreeSet集合类型，解析值 */
                 parseArray(treeSet, fieldName);
                 return treeSet;
             case LBRACKET:
                 JSONArray array = new JSONArray();
+                /** 探测到是数组集合类型，解析值 */
                 parseArray(array, fieldName);
                 if (lexer.isEnabled(Feature.UseObjectArray)) {
                     return array.toArray();
@@ -1354,6 +1366,7 @@ public class DefaultJSONParser implements Closeable {
                 return array;
             case LBRACE:
                 JSONObject object = new JSONObject(lexer.isEnabled(Feature.OrderedField));
+                /** 探测到是对象类型，解析值 */
                 return parseObject(object, fieldName);
 //            case LBRACE: {
 //                Map<String, Object> map = lexer.isEnabled(Feature.OrderedField)
@@ -1366,14 +1379,17 @@ public class DefaultJSONParser implements Closeable {
 //                return new JSONObject(map);
 //            }
             case LITERAL_INT:
+                /** 解析整数类型，预读下一个token */
                 Number intValue = lexer.integerValue();
                 lexer.nextToken();
                 return intValue;
             case LITERAL_FLOAT:
+                /** 探测到是浮点类型，解析值 */
                 Object value = lexer.decimalValue(lexer.isEnabled(Feature.UseBigDecimal));
                 lexer.nextToken();
                 return value;
             case LITERAL_STRING:
+                /** 探测到是字符串类型，解析值 */
                 String stringLiteral = lexer.stringVal();
                 lexer.nextToken(JSONToken.COMMA);
 
@@ -1390,18 +1406,23 @@ public class DefaultJSONParser implements Closeable {
 
                 return stringLiteral;
             case NULL:
+                /** 探测到是null，预读下一个token */
                 lexer.nextToken();
                 return null;
             case UNDEFINED:
+                /** 探测到是undefined，预读下一个token */
                 lexer.nextToken();
                 return null;
             case TRUE:
+                /** 探测到是true，预读下一个token */
                 lexer.nextToken();
                 return Boolean.TRUE;
             case FALSE:
+                /** 探测到是false，预读下一个token */
                 lexer.nextToken();
                 return Boolean.FALSE;
             case NEW:
+                /** 期望是标识符，预读下一个token */
                 lexer.nextToken(JSONToken.IDENTIFIER);
 
                 if (lexer.token() != JSONToken.IDENTIFIER) {
@@ -1409,10 +1430,13 @@ public class DefaultJSONParser implements Closeable {
                 }
                 lexer.nextToken(JSONToken.LPAREN);
 
+                /** 严格匹配当前是(, 否则语法错误 */
                 accept(JSONToken.LPAREN);
                 long time = ((Number) lexer.integerValue()).longValue();
+                /** 严格匹配当前是int, 否则语法错误 */
                 accept(JSONToken.LITERAL_INT);
 
+                /** 严格匹配当前是), 否则语法错误 */
                 accept(JSONToken.RPAREN);
 
                 return new Date(time);
@@ -1423,9 +1447,11 @@ public class DefaultJSONParser implements Closeable {
                 throw new JSONException("unterminated json string, " + lexer.info());
             case HEX:
                 byte[] bytes = lexer.bytesValue();
+                /** 当前是十六进制，预读下一个token */
                 lexer.nextToken();
                 return bytes;
             case IDENTIFIER:
+                /** 读取标识符 */
                 String identifier = lexer.stringVal();
                 if ("NaN".equals(identifier)) {
                     lexer.nextToken();

@@ -7,16 +7,19 @@ import java.util.Map;
 import junit.framework.TestCase;
 
 import org.junit.Assert;
+import org.junit.Test;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.TypeReference;
+import com.alibaba.fastjson.annotation.JSONType;
 
 public class IntegerFieldDeserializerTest2 extends TestCase {
 	
 	protected void setUp() throws Exception {
 //		ParserConfig.getGlobalInstance().setAsmEnable(false);
 	}
-	
+
+	@Test
 	public void test_integer() throws Exception {
 		String text = "{\"value\":{\"column1\":\"aa\"}}";
 		Map<String, Entity> map = JSON.parseObject(text, new TypeReference<Map<String, Entity>>(){});
@@ -45,6 +48,7 @@ public class IntegerFieldDeserializerTest2 extends TestCase {
 		Assert.assertNotNull("bb", map.get("valueB").getColumn1());
 	}
 
+	@JSONType(asm = false)
 	public static class Entity implements Serializable {
 		private static final long serialVersionUID = 1L;
 		private String column1;

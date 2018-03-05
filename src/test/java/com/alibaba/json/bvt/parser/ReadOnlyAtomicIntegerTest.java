@@ -7,9 +7,11 @@ import org.junit.Assert;
 import com.alibaba.fastjson.JSON;
 
 import junit.framework.TestCase;
+import org.junit.Test;
 
 public class ReadOnlyAtomicIntegerTest extends TestCase {
 
+    @Test
     public void test_readOnly() throws Exception {
         Model model = new Model();
         model.value.set(1001);

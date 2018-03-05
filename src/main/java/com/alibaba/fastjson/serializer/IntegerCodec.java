@@ -74,6 +74,7 @@ public class IntegerCodec implements ObjectSerializer, ObjectDeserializer {
 
         final int token = lexer.token();
 
+        /** 如果解析到null值，返回null */
         if (token == JSONToken.NULL) {
             lexer.nextToken(JSONToken.COMMA);
             return null;
@@ -83,19 +84,24 @@ public class IntegerCodec implements ObjectSerializer, ObjectDeserializer {
         Integer intObj;
         try {
             if (token == JSONToken.LITERAL_INT) {
+                /** 整型字面量，预读下一个token */
                 int val = lexer.intValue();
                 lexer.nextToken(JSONToken.COMMA);
                 intObj = Integer.valueOf(val);
             } else if (token == JSONToken.LITERAL_FLOAT) {
+                /** 浮点数字面量，预读下一个token */
                 BigDecimal decimalValue = lexer.decimalValue();
                 lexer.nextToken(JSONToken.COMMA);
                 intObj = Integer.valueOf(decimalValue.intValue());
             } else {
                 if (token == JSONToken.LBRACE) {
+
+                    /** 处理历史原因反序列化AtomicInteger成map */
                     JSONObject jsonObject = new JSONObject(true);
                     parser.parseObject(jsonObject);
                     intObj = TypeUtils.castToInt(jsonObject);
                 } else {
+                    /** 处理其他情况 */
                     Object value = parser.parse();
                     intObj = TypeUtils.castToInt(value);
                 }

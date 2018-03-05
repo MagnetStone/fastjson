@@ -52,9 +52,11 @@ public class CharacterCodec implements ObjectSerializer, ObjectDeserializer {
 
     @SuppressWarnings("unchecked")
     public <T> T deserialze(DefaultJSONParser parser, Type clazz, Object fieldName) {
+        /** 根据token解析类型 */
         Object value = parser.parse();
-        return value == null //
-            ? null //
+        return value == null
+            ? null
+            /** 转换成char类型，如果是string取字符串第一个char */
             : (T) TypeUtils.castToChar(value);
     }
 
