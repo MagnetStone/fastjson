@@ -138,6 +138,7 @@ public class ObjectArrayCodec implements ObjectSerializer, ObjectDeserializer {
         final JSONLexer lexer = parser.lexer;
         int token = lexer.token();
         if (token == JSONToken.NULL) {
+            /** 解析到Null，预读下一个token */
             lexer.nextToken(JSONToken.COMMA);
             return null;
         }
@@ -157,15 +158,18 @@ public class ObjectArrayCodec implements ObjectSerializer, ObjectDeserializer {
         Type componentType;
         if (type instanceof GenericArrayType) {
             GenericArrayType clazz = (GenericArrayType) type;
+            /** 获取泛型数组真实参数类型 */
             componentType = clazz.getGenericComponentType();
             if (componentType instanceof TypeVariable) {
                 TypeVariable typeVar = (TypeVariable) componentType;
                 Type objType = parser.getContext().type;
                 if (objType instanceof ParameterizedType) {
+                    /** 获取泛型参数化类型，eg: Collection<String> */
                     ParameterizedType objParamType = (ParameterizedType) objType;
                     Type objRawType = objParamType.getRawType();
                     Type actualType = null;
                     if (objRawType instanceof Class) {
+                        /** 遍历Class包含的参数化类型，查找与泛型数组类型名字一致的作为真实类型 */
                         TypeVariable[] objTypeParams = ((Class) objRawType).getTypeParameters();
                         for (int i = 0; i < objTypeParams.length; ++i) {
                             if (objTypeParams[i].getName().equals(typeVar.getName())) {
@@ -179,16 +183,19 @@ public class ObjectArrayCodec implements ObjectSerializer, ObjectDeserializer {
                         componentClass = Object.class;
                     }
                 } else {
+                    // 获取数组类型上界
                     componentClass = TypeUtils.getClass(typeVar.getBounds()[0]);
                 }
             } else {
                 componentClass = TypeUtils.getClass(componentType);
             }
         } else {
+            /** 非泛型数组，普通对象数组 */
             Class clazz = (Class) type;
             componentType = componentClass = clazz.getComponentType();
         }
         JSONArray array = new JSONArray();
+        /** 根据token解析数组元素放到array中 */
         parser.parseArray(componentType, array, fieldName);
 
         return (T) toObjectArray(parser, componentClass, array);

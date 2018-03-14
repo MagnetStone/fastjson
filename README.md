@@ -3,7 +3,7 @@
 目前网上公开的fastjson源码解析太少或者缺少深度，因此我计划通过研究源码的方式并记录下来，让更多想了解底层实现的同学受益。如果在阅读过程中发现错误，欢迎与我沟通 。
 
 ```
-邮箱：jason.shang@hotmail.com
+邮箱：yiji.github@hotmail.com
 微信：skyingshang
 ```
 

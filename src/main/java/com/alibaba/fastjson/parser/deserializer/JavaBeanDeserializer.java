@@ -50,11 +50,16 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
     }
     
     public JavaBeanDeserializer(ParserConfig config, JavaBeanInfo beanInfo){
+        /** java对象类名称 */
         this.clazz = beanInfo.clazz;
         this.beanInfo = beanInfo;
 
         Map<String, FieldDeserializer> alterNameFieldDeserializers = null;
         sortedFieldDeserializers = new FieldDeserializer[beanInfo.sortedFields.length];
+        /**
+         *  给已排序的字段创建反序列化实例，如果字段有别名，
+         *  关联别名到反序列化的映射
+         */
         for (int i = 0, size = beanInfo.sortedFields.length; i < size; ++i) {
             FieldInfo fieldInfo = beanInfo.sortedFields[i];
             FieldDeserializer fieldDeserializer = config.createFieldDeserializer(config, beanInfo, fieldInfo);
@@ -73,6 +78,7 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
         fieldDeserializers = new FieldDeserializer[beanInfo.fields.length];
         for (int i = 0, size = beanInfo.fields.length; i < size; ++i) {
             FieldInfo fieldInfo = beanInfo.fields[i];
+            /** 采用二分法在sortedFieldDeserializers中查找已创建的反序列化类型 */
             FieldDeserializer fieldDeserializer = getFieldDeserializer(fieldInfo.name);
             fieldDeserializers[i] = fieldDeserializer;
         }
@@ -172,6 +178,9 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
     public Object createInstance(DefaultJSONParser parser, Type type) {
         if (type instanceof Class) {
             if (clazz.isInterface()) {
+                /** 针对反序列化时接口类型的，通过jdk冬天代理拦截put和get等操作，
+                 *  进行set或者put值的操作值会存储在jsonobject内部的map结构
+                 */
                 Class<?> clazz = (Class<?>) type;
                 ClassLoader loader = Thread.currentThread().getContextClassLoader();
                 final JSONObject obj = new JSONObject();
@@ -180,10 +189,12 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
             }
         }
 
+        /** 忽略没有默认构造函数和没有创建对象的工厂方法 */
         if (beanInfo.defaultConstructor == null && beanInfo.factoryMethod == null) {
             return null;
         }
 
+        /** 忽略同时存在显示构造函数和创建对象的工厂方法的场景 */
         if (beanInfo.factoryMethod != null && beanInfo.defaultConstructorParameterSize > 0) {
             return null;
         }
@@ -191,10 +202,12 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
         Object object;
         try {
             Constructor<?> constructor = beanInfo.defaultConstructor;
+            /** 存在默认无参构造函数 */
             if (beanInfo.defaultConstructorParameterSize == 0) {
                 if (constructor != null) {
                     object = constructor.newInstance();
                 } else {
+                    /** 否则使用工厂方法生成对象 */
                     object = beanInfo.factoryMethod.invoke(null);
                 }
             } else {
@@ -247,7 +260,8 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
             throw new JSONException("create instance error, class " + clazz.getName(), e);
         }
 
-        if (parser != null // 
+        /** 开启InitStringFieldAsEmpty特性，会把字符串字段初始化为空串 */
+        if (parser != null
                 && parser.lexer.isEnabled(Feature.InitStringFieldAsEmpty)) {
             for (FieldInfo fieldInfo : beanInfo.fields) {
                 if (fieldInfo.fieldClass == String.class) {
@@ -273,7 +287,7 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
 
     @SuppressWarnings({ "unchecked" })
     public <T> T deserialzeArrayMapping(DefaultJSONParser parser, Type type, Object fieldName, Object object) {
-        final JSONLexer lexer = parser.lexer; // xxx
+        final JSONLexer lexer = parser.lexer;
         if (lexer.token() != JSONToken.LBRACKET) {
             throw new JSONException("error");
         }
@@ -353,21 +367,23 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
     }
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
-    protected <T> T deserialze(DefaultJSONParser parser, // 
-                               Type type, // 
-                               Object fieldName, // 
-                               Object object, //
-                               int features, //
+    protected <T> T deserialze(DefaultJSONParser parser,
+                               Type type,
+                               Object fieldName,
+                               Object object,
+                               int features,
                                int[] setFlags) {
         if (type == JSON.class || type == JSONObject.class) {
+            /** 根据当前token类型判断解析对象 */
             return (T) parser.parse();
         }
 
-        final JSONLexerBase lexer = (JSONLexerBase) parser.lexer; // xxx
+        final JSONLexerBase lexer = (JSONLexerBase) parser.lexer;
         final ParserConfig config = parser.getConfig();
 
         int token = lexer.token();
         if (token == JSONToken.NULL) {
+            /** 解析null，预读下一个token并返回 */
             lexer.nextToken(JSONToken.COMMA);
             return null;
         }
@@ -383,6 +399,7 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
 
             if (token == JSONToken.RBRACE) {
                 lexer.nextToken(JSONToken.COMMA);
+                /** 遇到}认为遇到对象结束，尝试创建实例对象 */
                 if (object == null) {
                     object = createInstance(parser, type);
                 }
@@ -391,11 +408,12 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
 
             if (token == JSONToken.LBRACKET) {
                 final int mask = Feature.SupportArrayToBean.mask;
-                boolean isSupportArrayToBean = (beanInfo.parserFeatures & mask) != 0 //
-                                               || lexer.isEnabled(Feature.SupportArrayToBean) //
+                boolean isSupportArrayToBean = (beanInfo.parserFeatures & mask) != 0
+                                               || lexer.isEnabled(Feature.SupportArrayToBean)
                                                || (features & mask) != 0
                                                ;
                 if (isSupportArrayToBean) {
+                    /** 将数组值反序列化为对象，根据sortedFieldDeserializers依次写字段值 */
                     return deserialzeArrayMapping(parser, type, fieldName, object);
                 }
             }
@@ -407,12 +425,14 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
 
                 if (token == JSONToken.LITERAL_STRING) {
                     String strVal = lexer.stringVal();
+                    /** 读到空值字符串，返回null */
                     if (strVal.length() == 0) {
                         lexer.nextToken();
                         return null;
                     }
 
                     if (beanInfo.jsonType != null) {
+                        /** 探测是否是枚举类型 */
                         for (Class<?> seeAlsoClass : beanInfo.jsonType.seeAlso()) {
                             if (Enum.class.isAssignableFrom(seeAlsoClass)) {
                                 try {
@@ -429,6 +449,7 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
                 }
 
                 if (token == JSONToken.LBRACKET && lexer.getCurrent() == ']') {
+                    /** 包含零元素的数组 */
                     lexer.next();
                     lexer.nextToken();
                     return null;
@@ -462,6 +483,7 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
                 FieldInfo fieldInfo = null;
                 Class<?> fieldClass = null;
                 JSONField feildAnnotation = null;
+                /** 检查是否所有字段都已经处理 */
                 if (fieldIndex < sortedFieldDeserializers.length) {
                     fieldDeser = sortedFieldDeserializers[fieldIndex];
                     fieldInfo = fieldDeser.fieldInfo;
@@ -476,6 +498,7 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
                 if (fieldDeser != null) {
                     char[] name_chars = fieldInfo.name_chars;
                     if (fieldClass == int.class || fieldClass == Integer.class) {
+                        /** 扫描整数值 */
                         fieldValue = lexer.scanFieldInt(name_chars);
                         
                         if (lexer.matchStat > 0) {
@@ -485,6 +508,7 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
                             continue;  
                         }
                     } else if (fieldClass == long.class || fieldClass == Long.class) {
+                        /** 扫描长整型值 */
                         fieldValue = lexer.scanFieldLong(name_chars);
                         
                         if (lexer.matchStat > 0) {
@@ -494,6 +518,7 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
                             continue;  
                         }
                     } else if (fieldClass == String.class) {
+                        /** 扫描字符串值 */
                         fieldValue = lexer.scanFieldString(name_chars);
                         
                         if (lexer.matchStat > 0) {
@@ -503,6 +528,7 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
                             continue;  
                         }
                     } else if (fieldClass == java.util.Date.class && fieldInfo.format == null) {
+                        /** 扫描日期值 */
                         fieldValue = lexer.scanFieldDate(name_chars);
 
                         if (lexer.matchStat > 0) {
@@ -512,6 +538,7 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
                             continue;
                         }
                     } else if (fieldClass == BigDecimal.class) {
+                        /** 扫描高精度值 */
                         fieldValue = lexer.scanFieldDecimal(name_chars);
 
                         if (lexer.matchStat > 0) {
@@ -530,6 +557,7 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
                             continue;
                         }
                     } else if (fieldClass == boolean.class || fieldClass == Boolean.class) {
+                        /** 扫描boolean值 */
                         fieldValue = lexer.scanFieldBoolean(name_chars);
                         
                         if (lexer.matchStat > 0) {
@@ -539,6 +567,7 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
                             continue;  
                         }
                     } else if (fieldClass == float.class || fieldClass == Float.class) {
+                        /** 扫描浮点值 */
                         fieldValue = lexer.scanFieldFloat(name_chars);
                         
                         if (lexer.matchStat > 0) {
@@ -548,6 +577,7 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
                             continue;  
                         }
                     } else if (fieldClass == double.class || fieldClass == Double.class) {
+                        /** 扫描double值 */
                         fieldValue = lexer.scanFieldDouble(name_chars);
                         
                         if (lexer.matchStat > 0) {
@@ -556,7 +586,8 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
                         } else if (lexer.matchStat == JSONLexer.NOT_MATCH_NAME) {
                             continue;  
                         }
-                    } else if (fieldClass.isEnum() // 
+
+                    } else if (fieldClass.isEnum()
                             && parser.getConfig().getDeserializer(fieldClass) instanceof EnumDeserializer
                             && (feildAnnotation == null || feildAnnotation.deserializeUsing() == Void.class)
                             ) {
@@ -572,6 +603,7 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
                             }
                         }
                     } else if (fieldClass == int[].class) {
+                        /** 扫描整型数组值 */
                         fieldValue = lexer.scanFieldIntArray(name_chars);
 
                         if (lexer.matchStat > 0) {
@@ -590,6 +622,7 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
                             continue;
                         }
                     } else if (fieldClass == float[][].class) {
+                        /** 扫描浮点数组值 */
                         fieldValue = lexer.scanFieldFloatArray2(name_chars);
 
                         if (lexer.matchStat > 0) {
@@ -604,13 +637,17 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
                         continue;
                     }
                 }
-                
+
+                /** 如果当前字符串的json不匹配当前字段名称 */
                 if (!matchField) {
+                    /** 将当前的字段名称加入符号表 */
                     key = lexer.scanSymbol(parser.symbolTable);
 
+                    /** 当前是无效的字段标识符，比如是,等符号 */
                     if (key == null) {
                         token = lexer.token();
                         if (token == JSONToken.RBRACE) {
+                            /** 结束花括号, 预读下一个token */
                             lexer.nextToken(JSONToken.COMMA);
                             break;
                         }
@@ -679,6 +716,7 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
                             String typeName = lexer.stringVal();
                             lexer.nextToken(JSONToken.COMMA);
 
+                            /** 忽略字符串中包含@type解析 */
                             if (typeName.equals(beanInfo.typeName)|| parser.isEnabled(Feature.IgnoreAutoType)) {
                                 if (lexer.token() == JSONToken.RBRACE) {
                                     lexer.nextToken();
@@ -688,10 +726,12 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
                             }
                             
 
+                            /** 根据枚举seeAlso查找反序列化实例 */
                             ObjectDeserializer deserializer = getSeeAlso(config, this.beanInfo, typeName);
                             Class<?> userType = null;
 
                             if (deserializer == null) {
+                                /** 无法匹配，查找类对应的泛型或者参数化类型关联的反序列化实例 */
                                 Class<?> expectClass = TypeUtils.getClass(type);
                                 userType = config.checkAutoType(typeName, expectClass, lexer.getFeatures());
                                 deserializer = parser.getConfig().getDeserializer(userType);
@@ -712,6 +752,7 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
                     }
                 }
 
+                /** 第一次创建并初始化对象实例 */
                 if (object == null && fieldValues == null) {
                     object = createInstance(parser, type);
                     if (object == null) {
@@ -725,16 +766,21 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
 
                 if (matchField) {
                     if (!valueParsed) {
+                        /** json串当前满足字段名称，并且没有解析过值 ，
+                         *  直接使用当前字段关联的反序列化实例解析
+                         */
                         fieldDeser.parseField(parser, object, type, fieldValues);
                     } else {
                         if (object == null) {
+                            /** 值已经解析过了，存储到map中 */
                             fieldValues.put(fieldInfo.name, fieldValue);
                         } else if (fieldValue == null) {
-                            if (fieldClass != int.class //
-                                    && fieldClass != long.class //
-                                    && fieldClass != float.class //
-                                    && fieldClass != double.class //
-                                    && fieldClass != boolean.class //
+                            /** 字段值是null，排除int,long,float,double,boolean */
+                            if (fieldClass != int.class
+                                    && fieldClass != long.class
+                                    && fieldClass != float.class
+                                    && fieldClass != double.class
+                                    && fieldClass != boolean.class
                                     ) {
                                 fieldDeser.setValue(object, fieldValue);
                             }
@@ -753,8 +799,12 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
                         }
                     }
                 } else {
+                    /** 字段名称当前和json串不匹配，通常顺序或者字段增加或者缺少，
+                     *  根据key查找反序列化实例解析
+                     */
                     boolean match = parseField(parser, key, object, type, fieldValues, setFlags);
                     if (!match) {
+                        /** 遇到封闭花括号，与读下一个token，跳出循环 */
                         if (lexer.token() == JSONToken.RBRACE) {
                             lexer.nextToken();
                             break;
@@ -782,6 +832,7 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
 
             if (object == null) {
                 if (fieldValues == null) {
+                    /** 第一次创建并初始化对象实例 */
                     object = createInstance(parser, type);
                     if (childContext == null) {
                         childContext = parser.setContext(context, object, fieldName);
@@ -789,6 +840,7 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
                     return (T) object;
                 }
 
+                /** 提取构造函数参数名称 */
                 String[] paramNames = beanInfo.creatorConstructorParameters;
                 final Object[] params;
                 if (paramNames != null) {
@@ -797,9 +849,11 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
                         String paramName = paramNames[i];
 
                         Object param = fieldValues.remove(paramName);
+                        /** 解析过的字段不包含当前参数名字 */
                         if (param == null) {
                             Type fieldType = beanInfo.creatorConstructorParameterTypes[i];
                             FieldInfo fieldInfo = beanInfo.fields[i];
+                            /** 探测并设置类型默认值 */
                             if (fieldType == byte.class) {
                                 param = (byte) 0;
                             } else if (fieldType == short.class) {
@@ -822,6 +876,7 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
                         params[i] = param;
                     }
                 } else {
+                    /** 根据字段探测并初始化构造函数参数默认值 */
                     FieldInfo[] fieldInfoList = beanInfo.fields;
                     int size = fieldInfoList.length;
                     params = new Object[size];
@@ -862,6 +917,7 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
                     }
 
                     if (paramNames != null) {
+                        /** 剩余字段查找反序列化器set值 */
                         for (Map.Entry<String, Object> entry : fieldValues.entrySet()) {
                             FieldDeserializer fieldDeserializer = getFieldDeserializer(entry.getKey());
                             if (fieldDeserializer != null) {
@@ -879,7 +935,8 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
 
                 childContext.object = object;
             }
-            
+
+            /** 检查是否扩展后置方法buildMethod，如果有进行调用 */
             Method buildMethod = beanInfo.buildMethod;
             if (buildMethod == null) {
                 return (T) object;
@@ -928,7 +985,7 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
     
     public boolean parseField(DefaultJSONParser parser, String key, Object object, Type objectType,
                               Map<String, Object> fieldValues, int[] setFlags) {
-        JSONLexer lexer = parser.lexer; // xxx
+        JSONLexer lexer = parser.lexer;
 
         final int disableFieldSmartMatchMask = Feature.DisableFieldSmartMatch.mask;
         FieldDeserializer fieldDeserializer;

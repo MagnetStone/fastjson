@@ -113,9 +113,12 @@ public class ASMSerializerFactory implements Opcodes {
 
         FieldInfo[] unsortedGetters = beanInfo.fields;
 
+        /***
+         * 如果只存在接口什么的方法，没有声明字段
+         */
         for (FieldInfo fieldInfo : unsortedGetters) {
-            if (fieldInfo.field == null //
-                && fieldInfo.method != null //
+            if (fieldInfo.field == null
+                && fieldInfo.method != null
                 && fieldInfo.method.getDeclaringClass().isInterface()) {
                 return new JavaBeanSerializer(beanInfo);
             }
@@ -152,11 +155,12 @@ public class ASMSerializerFactory implements Opcodes {
 
 
         ClassWriter cw = new ClassWriter();
-        cw.visit(V1_5 //
-                 , ACC_PUBLIC + ACC_SUPER //
-                 , classNameType //
-                 , JavaBeanSerializer //
-                 , new String[] { ObjectSerializer } //
+        cw.visit(V1_5
+                 // jdk1.2以后规范编译需要标志ACC_SUPER
+                 , ACC_PUBLIC + ACC_SUPER
+                 , classNameType
+                 , JavaBeanSerializer
+                 , new String[] { ObjectSerializer }
         );
 
         for (FieldInfo fieldInfo : getters) {

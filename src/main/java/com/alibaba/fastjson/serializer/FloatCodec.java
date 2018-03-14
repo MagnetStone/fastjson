@@ -82,17 +82,20 @@ public class FloatCodec implements ObjectSerializer, ObjectDeserializer {
         final JSONLexer lexer = parser.lexer;
 
         if (lexer.token() == JSONToken.LITERAL_INT) {
+            /** 整型字面量，预读下一个token */
             String val = lexer.numberString();
             lexer.nextToken(JSONToken.COMMA);
             return (T) Float.valueOf(Float.parseFloat(val));
         }
 
         if (lexer.token() == JSONToken.LITERAL_FLOAT) {
+            /** 浮点数字面量，预读下一个token */
             float val = lexer.floatValue();
             lexer.nextToken(JSONToken.COMMA);
             return (T) Float.valueOf(val);
         }
 
+        /** 处理其他情况 */
         Object value = parser.parse();
 
         if (value == null) {

@@ -72,12 +72,14 @@ public class BigDecimalCodec implements ObjectSerializer, ObjectDeserializer {
     public static <T> T deserialze(DefaultJSONParser parser) {
         final JSONLexer lexer = parser.lexer;
         if (lexer.token() == JSONToken.LITERAL_INT) {
+            /** 整型字面量，预读下一个token */
             BigDecimal decimalValue = lexer.decimalValue();
             lexer.nextToken(JSONToken.COMMA);
             return (T) decimalValue;
         }
 
         if (lexer.token() == JSONToken.LITERAL_FLOAT) {
+            /** 浮点数字面量，预读下一个token */
             BigDecimal val = lexer.decimalValue();
             lexer.nextToken(JSONToken.COMMA);
             return (T) val;

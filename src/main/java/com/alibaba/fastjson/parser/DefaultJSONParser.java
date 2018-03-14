@@ -695,6 +695,7 @@ public class DefaultJSONParser implements Closeable {
     public void parseArray(Type type, Collection array, Object fieldName) {
         int token = lexer.token();
         if (token == JSONToken.SET || token == JSONToken.TREE_SET) {
+            /** 提取Set或者TreeSet后面[字符 */
             lexer.nextToken();
             token = lexer.token();
         }
@@ -718,6 +719,7 @@ public class DefaultJSONParser implements Closeable {
         ParseContext context = this.context;
         this.setContext(array, fieldName);
         try {
+            /** 循环解析数组内容 */
             for (int i = 0;; ++i) {
                 if (lexer.isEnabled(Feature.AllowArbitraryCommas)) {
                     while (lexer.token() == JSONToken.COMMA) {

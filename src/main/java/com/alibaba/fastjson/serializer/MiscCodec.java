@@ -189,14 +189,17 @@ public class MiscCodec implements ObjectSerializer, ObjectDeserializer {
 
         if (clazz == InetSocketAddress.class) {
             if (lexer.token() == JSONToken.NULL) {
+                /** 解析到null特殊token，预读下一个token */
                 lexer.nextToken();
                 return null;
             }
 
+            /** 校验格式是对象形式 { */
             parser.accept(JSONToken.LBRACE);
 
             InetAddress address = null;
             int port = 0;
+            /** 参考MiscCodec#write(JSONSerializer, Object, Object, Type, int)拼接socket */
             for (;;) {
                 String key = lexer.stringVal();
                 lexer.nextToken(JSONToken.COLON);

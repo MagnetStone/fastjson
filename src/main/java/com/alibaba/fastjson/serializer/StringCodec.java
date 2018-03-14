@@ -52,8 +52,10 @@ public class StringCodec implements ObjectSerializer, ObjectDeserializer {
     @SuppressWarnings("unchecked")
     public <T> T deserialze(DefaultJSONParser parser, Type clazz, Object fieldName) {
         if (clazz == StringBuffer.class) {
+            /** 将解析的字符序列转换成StringBuffer */
             final JSONLexer lexer = parser.lexer;
             if (lexer.token() == JSONToken.LITERAL_STRING) {
+                /** 字符串字面量，预读下一个token */
                 String val = lexer.stringVal();
                 lexer.nextToken(JSONToken.COMMA);
 
@@ -70,9 +72,11 @@ public class StringCodec implements ObjectSerializer, ObjectDeserializer {
         }
 
         if (clazz == StringBuilder.class) {
+            /** 将解析的字符序列转换成StringBuilder */
             final JSONLexer lexer = parser.lexer;
             if (lexer.token() == JSONToken.LITERAL_STRING) {
                 String val = lexer.stringVal();
+                /** 字符串字面量，预读下一个token */
                 lexer.nextToken(JSONToken.COMMA);
 
                 return (T) new StringBuilder(val);
@@ -94,12 +98,14 @@ public class StringCodec implements ObjectSerializer, ObjectDeserializer {
     public static <T> T deserialze(DefaultJSONParser parser) {
         final JSONLexer lexer = parser.getLexer();
         if (lexer.token() == JSONToken.LITERAL_STRING) {
+            /** 字符串字面量，预读下一个token */
             String val = lexer.stringVal();
             lexer.nextToken(JSONToken.COMMA);
             return (T) val;
         }
 
         if (lexer.token() == JSONToken.LITERAL_INT) {
+            /** 整型字面量，预读下一个token */
             String val = lexer.numberString();
             lexer.nextToken(JSONToken.COMMA);
             return (T) val;
