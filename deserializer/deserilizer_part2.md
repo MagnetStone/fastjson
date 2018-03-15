@@ -1109,3 +1109,127 @@ fastjson针对常用的类型已经注册了反序列化实现方案，根据源
 1. 根据类所有的字段，字段类型进行json串进行匹配，首先检查json串的值是否和当前字段名称相等，如果相等认为匹配成功，会创建实例对象并且把解析字段值set进去。
 2. 如果当前json串顺序和java对象字段不一致怎么办，这个时候我字段又全部遍历完了，fastjson会自动把当前解析的字段名称加入符号表中，然后查找字段名称对应的反序列化实例进行set值操作
 3. 当前实现提供了解析对象后buildMethod扩展点，如果提供了会进行回调然后返回
+
+
+值得一提的是构造函数处理：
+
+``` java
+    public Object createInstance(DefaultJSONParser parser, Type type) {
+        if (type instanceof Class) {
+            if (clazz.isInterface()) {
+                /** 针对反序列化时接口类型的，通过jdk冬天代理拦截put和get等操作，
+                 *  进行set或者put值的操作值会存储在jsonobject内部的map结构
+                 */
+                Class<?> clazz = (Class<?>) type;
+                ClassLoader loader = Thread.currentThread().getContextClassLoader();
+                final JSONObject obj = new JSONObject();
+                Object proxy = Proxy.newProxyInstance(loader, new Class<?>[] { clazz }, obj);
+                return proxy;
+            }
+        }
+
+        /** 忽略没有默认构造函数和没有创建对象的工厂方法 */
+        if (beanInfo.defaultConstructor == null && beanInfo.factoryMethod == null) {
+            return null;
+        }
+
+        /** 忽略同时存在显示构造函数和创建对象的工厂方法的场景 */
+        if (beanInfo.factoryMethod != null && beanInfo.defaultConstructorParameterSize > 0) {
+            return null;
+        }
+
+        Object object;
+        try {
+            Constructor<?> constructor = beanInfo.defaultConstructor;
+            /** 存在默认无参构造函数 */
+            if (beanInfo.defaultConstructorParameterSize == 0) {
+                if (constructor != null) {
+                    object = constructor.newInstance();
+                } else {
+                    /** 否则使用工厂方法生成对象 */
+                    object = beanInfo.factoryMethod.invoke(null);
+                }
+            } else {
+                ParseContext context = parser.getContext();
+                if (context == null || context.object == null) {
+                    throw new JSONException("can't create non-static inner class instance.");
+                }
+
+                final String typeName;
+                if (type instanceof Class) {
+                    typeName = ((Class<?>) type).getName();
+                } else {
+                    throw new JSONException("can't create non-static inner class instance.");
+                }
+
+                final int lastIndex = typeName.lastIndexOf('$');
+                String parentClassName = typeName.substring(0, lastIndex);
+
+                Object ctxObj = context.object;
+                String parentName = ctxObj.getClass().getName();
+
+                Object param = null;
+                if (!parentName.equals(parentClassName)) {
+                    /** 处理继承过来的类 */
+                    ParseContext parentContext = context.parent;
+                    if (parentContext != null
+                            && parentContext.object != null
+                            && ("java.util.ArrayList".equals(parentName)
+                            || "java.util.List".equals(parentName)
+                            || "java.util.Collection".equals(parentName)
+                            || "java.util.Map".equals(parentName)
+                            || "java.util.HashMap".equals(parentName))) {
+                        parentName = parentContext.object.getClass().getName();
+                        if (parentName.equals(parentClassName)) {
+                            param = parentContext.object;
+                        }
+                    }
+                } else {
+                    /** 处理非静态内部类场景，
+                     *  编译器会自动修改内部类构造函数，添加外层类实例对象作为参数，
+                     *  ctxObj就是外层实例对象
+                     */
+                    param = ctxObj;
+                }
+
+                if (param == null) {
+                    throw new JSONException("can't create non-static inner class instance.");
+                }
+
+                object = constructor.newInstance(param);
+            }
+        } catch (JSONException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new JSONException("create instance error, class " + clazz.getName(), e);
+        }
+
+        /** 开启InitStringFieldAsEmpty特性，会把字符串字段初始化为空串 */
+        if (parser != null
+                && parser.lexer.isEnabled(Feature.InitStringFieldAsEmpty)) {
+            for (FieldInfo fieldInfo : beanInfo.fields) {
+                if (fieldInfo.fieldClass == String.class) {
+                    try {
+                        fieldInfo.set(object, "");
+                    } catch (Exception e) {
+                        throw new JSONException("create instance error, class " + clazz.getName(), e);
+                    }
+                }
+            }
+        }
+
+        return object;
+    }
+```
+
+编译器会为非静态内部类构造函数添加外层的实例对象作为第一个参数，所以在生成实例化对象的时候会从上下文中获取外层对象进行反射创建对象`constructor.newInstance(param)`。
+
+为了更容易理解这段逻辑，提供一下单元测试可以调试：
+
+``` java
+com.alibaba.json.bvt.parser.deser.InnerClassDeser2#test_for_inner_class
+
+com.alibaba.json.bvt.parser.deser.InnerClassDeser3#test_for_inner_class
+
+com.alibaba.json.bvt.parser.deser.InnerClassDeser4#test_for_inner_class
+```

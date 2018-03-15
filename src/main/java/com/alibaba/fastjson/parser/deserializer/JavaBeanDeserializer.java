@@ -231,6 +231,7 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
 
                 Object param = null;
                 if (!parentName.equals(parentClassName)) {
+                    /** 处理继承过来的类 */
                     ParseContext parentContext = context.parent;
                     if (parentContext != null
                             && parentContext.object != null
@@ -245,6 +246,10 @@ public class JavaBeanDeserializer implements ObjectDeserializer {
                         }
                     }
                 } else {
+                    /** 处理非静态内部类场景，
+                     *  编译器会自动修改内部类构造函数，添加外层类实例对象作为参数，
+                     *  ctxObj就是外层实例对象
+                     */
                     param = ctxObj;
                 }
 

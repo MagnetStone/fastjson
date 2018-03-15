@@ -1,6 +1,8 @@
 package com.alibaba.json.bvt.parser.deser;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.annotation.JSONType;
+
 import junit.framework.TestCase;
 
 import java.util.List;
@@ -15,6 +17,7 @@ public class InnerClassDeser2 extends TestCase {
         assertEquals(123, model.items.get(0).id);
     }
 
+    @JSONType(asm = false)
     public static class Model {
         public List<Item> items;
 

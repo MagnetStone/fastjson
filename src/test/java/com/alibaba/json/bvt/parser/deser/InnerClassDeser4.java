@@ -1,6 +1,8 @@
 package com.alibaba.json.bvt.parser.deser;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.annotation.JSONType;
+
 import junit.framework.TestCase;
 
 import java.util.HashMap;
@@ -16,6 +18,7 @@ public class InnerClassDeser4 extends TestCase {
         assertEquals(123, model.items.get("123").id);
     }
 
+    @JSONType(asm = false)
     public static class Model {
         public HashMap<String, Item> items;
 
