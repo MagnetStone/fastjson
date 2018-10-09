@@ -2,7 +2,7 @@
 
 ### 序列化16进制字节数组
 
-``` java
+```java
     public void writeHex(byte[] bytes) {
         /** 计算总共字符长度, 乘以2 代表一个字符要占用2字节, 3代表要添加 x 和 前后添加' */
         int newcount = count + bytes.length * 2 + 3;
@@ -21,7 +21,6 @@
                     int b0 = a >> 4;
                     /** 取字节的低四位 0000 1111*/
                     int b1 = a & 0xf;
-
                     /** 索引低索引存储字节高位
                      *  如果4位表示的数字是 0~9, 转换为ascii的 0~9
                      *  如果4位表示的不是数字, 转换为16进制ascii码字符
@@ -68,7 +67,7 @@
 
 ### 序列化byte字节数组
 
-``` java
+```java
    public void writeByteArray(byte[] bytes) {
         if (isEnabled(SerializerFeature.WriteClassName.mask)) {
             /** 如果开启序列化特性WriteClassName，直接写16进制字符 */
@@ -776,11 +775,11 @@ writeStringWithDoubleQuote方法实现实在是太长了，这个方法主要做
 1. 如果开启序列化BrowserCompatible特性，执行ascii转换成native编码，节省空间。
 2. 如果输出器writer不为空，会自动触发buffer扩容`(原有容量1.5倍+1)`。
 
-另外一个针对特殊字符的字符串序列化方法writeStringWithDoubleQuote(char[] text, final char seperator)，因为和writeStringWithDoubleQuote(String text, final char seperator)版本极其类似，所以不再冗余分析。
+另外一个针对特殊字符的字符串序列化方法writeStringWithDoubleQuote\(char\[\] text, final char seperator\)，因为和writeStringWithDoubleQuote\(String text, final char seperator\)版本极其类似，所以不再冗余分析。
 
 序列化字符串的方法包括添加单引号的版本，详细请参考 writeStringWithSingleQuote ：
 
-``` java
+```java
     protected void writeStringWithSingleQuote(String text) {
         if (text == null) {
             int newcount = count + 4;
@@ -880,3 +879,4 @@ writeStringWithSingleQuote这个方法主要做了以下几件事情：
 2. 如果输出器writer不为空，会自动触发buffer扩容`(原有容量1.5倍+1)`。
 
 另外一个针对特殊字符的字符串序列化方法`writeStringWithSingleQuote(char[])`，因为和`writeStringWithSingleQuote(String)`版本极其类似，所以不再冗余分析。
+
